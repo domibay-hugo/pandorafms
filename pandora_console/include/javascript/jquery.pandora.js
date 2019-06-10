@@ -26,7 +26,8 @@
 
 	$.fn.showMessage = function (msg) {
 		return $(this).hide ().empty ()
-				.text (msg)
+		// here, previously .text (msg)
+				.html (msg)
 				.slideDown ();
 		};
 }) (jQuery);
@@ -162,12 +163,21 @@ $(document).ready (function () {
 					background: "black"
 				},
 				open: function() {
-					setTimeout(function(){
-							$("#spinner_ok").hide();
+					var remaining = 30;
+
+					// Timeout counter.
+					var count = function() {
+						if (remaining > 0) {
+							$("#license_error_remaining").text(remaining);
+							remaining -= 1;
+						} else {
+							$("#license_error_remaining").hide();
 							$("#ok_buttom").show();
-						},
-						30000
-					);
+							clearInterval(count);
+						}
+					}
+
+					setInterval(count, 1000);
 				}
 			});
 

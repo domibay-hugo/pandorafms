@@ -20,6 +20,8 @@ package PandoraFMS::DB;
 use strict;
 use warnings;
 use DBI;
+
+use lib '/usr/lib/perl5';
 use PandoraFMS::Tools;
 
 #use Data::Dumper;
@@ -62,6 +64,7 @@ our @EXPORT = qw(
 		get_agent_module_id
 		get_alert_template_module_id
 		get_alert_template_name
+		get_command_id
 		get_db_rows
 		get_db_rows_limit
 		get_db_single_row
@@ -206,6 +209,16 @@ sub get_action_id ($$) {
 	my ($dbh, $action_name) = @_;
 
 	my $rc = get_db_value ($dbh, "SELECT id FROM talert_actions WHERE name = ?", $action_name);
+	return defined ($rc) ? $rc : -1;
+}
+
+########################################################################
+## Return command ID given the command name.
+########################################################################
+sub get_command_id ($$) {
+	my ($dbh, $command_name) = @_;
+
+	my $rc = get_db_value ($dbh, "SELECT id FROM talert_commands WHERE name = ?", safe_input($command_name));
 	return defined ($rc) ? $rc : -1;
 }
 

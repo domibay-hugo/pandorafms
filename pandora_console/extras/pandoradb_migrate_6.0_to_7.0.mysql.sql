@@ -48,8 +48,6 @@ CREATE TABLE IF NOT EXISTS `tlocal_component` (
 	`dynamic_interval` int(4) unsigned default '0',
 	`dynamic_max` int(4) default '0',
 	`dynamic_min` int(4) default '0',
-	`dynamic_next` bigint(20) NOT NULL default '0',
-	`dynamic_two_tailed` tinyint(1) unsigned default '0',
 	`prediction_sample_window` int(10) default 0,
 	`prediction_samples` int(4) default 0,
 	`prediction_threshold` int(4) default 0,
@@ -57,6 +55,10 @@ CREATE TABLE IF NOT EXISTS `tlocal_component` (
 	FOREIGN KEY (`id_network_component_group`) REFERENCES tnetwork_component_group(`id_sg`)
 		ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `tlocal_component` ADD COLUMN `dynamic_next` bigint(20) NOT NULL default '0';
+ALTER TABLE `tlocal_component` ADD COLUMN `dynamic_two_tailed` tinyint(1) unsigned default '0';
+ALTER TABLE `tlocal_component` ADD COLUMN `ff_type` tinyint(1) unsigned default '0';
 
 -- -----------------------------------------------------
 -- Table `tpolicy_modules`
@@ -125,8 +127,6 @@ CREATE TABLE IF NOT EXISTS `tpolicy_modules` (
 	`dynamic_interval` int(4) unsigned default '0',
 	`dynamic_max` int(4) default '0',
 	`dynamic_min` int(4) default '0',
-	`dynamic_next` bigint(20) NOT NULL default '0',
-	`dynamic_two_tailed` tinyint(1) unsigned default '0',
 	`prediction_sample_window` int(10) default 0,
 	`prediction_samples` int(4) default 0,
 	`prediction_threshold` int(4) default 0,
@@ -134,6 +134,10 @@ CREATE TABLE IF NOT EXISTS `tpolicy_modules` (
 	KEY `main_idx` (`id_policy`),
 	UNIQUE (`id_policy`, `name`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
+
+ALTER TABLE `tpolicy_modules` ADD COLUMN `dynamic_next` bigint(20) NOT NULL default '0';
+ALTER TABLE `tpolicy_modules` ADD COLUMN `dynamic_two_tailed` tinyint(1) unsigned default '0';
+ALTER TABLE `tpolicy_modules` ADD COLUMN `ff_type` tinyint(1) unsigned default '0';
 
 -- ---------------------------------------------------------------------
 -- Table `tpolicies`
@@ -180,6 +184,9 @@ CREATE TABLE IF NOT EXISTS `tpolicy_agents` (
 	PRIMARY KEY  (`id`),
 	UNIQUE (`id_policy`, `id_agent`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
+
+ALTER TABLE `tpolicy_agents` ADD COLUMN `id_node` int(10) NOT NULL DEFAULT '0';
+ALTER TABLE `tpolicy_agents` ADD UNIQUE(`id_policy`, `id_agent`, `id_node`);
 
 -- -----------------------------------------------------
 -- Table `tpolicy_groups`
@@ -292,6 +299,8 @@ CREATE TABLE IF NOT EXISTS `tagent_module_inventory` (
 		ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+ALTER TABLE `tagent_module_inventory` ADD COLUMN `custom_fields` MEDIUMBLOB NOT NULL;
+
 -- ---------------------------------------------------------------------
 -- Table `tpolicy_modules_inventory`
 -- ---------------------------------------------------------------------
@@ -309,6 +318,8 @@ CREATE TABLE IF NOT EXISTS `tpolicy_modules_inventory` (
 	FOREIGN KEY (`id_module_inventory`) REFERENCES tmodule_inventory(`id_module_inventory`)
 		ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `tpolicy_modules_inventory` ADD COLUMN `custom_fields` MEDIUMBLOB NOT NULL;
 
 -- -----------------------------------------------------
 -- Table `tagente_datos_inventory`
@@ -341,18 +352,13 @@ CREATE TABLE IF NOT EXISTS `ttrap_custom_values` (
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `tmetaconsole_setup` (
 	`id` int(10) NOT NULL auto_increment primary key,
-	`server_name` text,
-	`server_url` text,
-	`dbuser` text,
-	`dbpass` text,
-	`dbhost` text,
-	`dbport` text,
-	`dbname` text,
-	`meta_dbuser` text,
-	`meta_dbpass` text,
-	`meta_dbhost` text,
-	`meta_dbport` text,
-	`meta_dbname` text,
+	`server_name` text default '',
+	`server_url` text default '',
+	`dbuser` text default '',
+	`dbpass` text default '',
+	`dbhost` text default '',
+	`dbport` text default '',
+	`dbname` text default '',
 	`auth_token` text default '',
 	`id_group` int(10) unsigned NOT NULL default 0,
 	`api_password` text NOT NULL,
@@ -361,6 +367,12 @@ CREATE TABLE IF NOT EXISTS `tmetaconsole_setup` (
 ) ENGINE=InnoDB 
 COMMENT = 'Table to store metaconsole sources' 
 DEFAULT CHARSET=utf8;
+
+ALTER TABLE tmetaconsole_setup ADD COLUMN `meta_dbuser` text;
+ALTER TABLE tmetaconsole_setup ADD COLUMN `meta_dbpass` text;
+ALTER TABLE tmetaconsole_setup ADD COLUMN `meta_dbhost` text;
+ALTER TABLE tmetaconsole_setup ADD COLUMN `meta_dbport` text;
+ALTER TABLE tmetaconsole_setup ADD COLUMN `meta_dbname` text;
 
 -- ---------------------------------------------------------------------
 -- Table `tprofile_view`
@@ -400,7 +412,7 @@ CREATE TABLE IF NOT EXISTS `tservice` (
 	`id_template_alert_warning` int(10) unsigned NOT NULL default 0,
 	`id_template_alert_critical` int(10) unsigned NOT NULL default 0,
 	`id_template_alert_unknown` int(10) unsigned NOT NULL default 0,
-	`id_template_alert_critical_sla` int(10) unsigned NOT NULL default 0
+	`id_template_alert_critical_sla` int(10) unsigned NOT NULL default 0,
 	PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB 
 COMMENT = 'Table to define services to monitor' 
@@ -547,6 +559,8 @@ CREATE TABLE IF NOT EXISTS `tevent_rule` (
 	PRIMARY KEY  (`id_event_rule`),
 	KEY `idx_id_event_alert` (`id_event_alert`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `tevent_rule` ADD COLUMN `group_recursion` INT(1) unsigned default 0;
 
 -- -----------------------------------------------------
 -- Table `tevent_alert`
@@ -744,13 +758,44 @@ CREATE TABLE IF NOT EXISTS `treport_content_template` (
 	`module_names` TEXT,
 	`module_free_text` TEXT,
 	`each_agent` tinyint(1) default 1,
-	`historical_db` tinyint(1) UNSIGNED NOT NULL default 0,
-	`lapse_calc` tinyint(1) UNSIGNED NOT NULL default '0',
-	`lapse` int(11) UNSIGNED NOT NULL default '300',
-	`visual_format` tinyint(1) UNSIGNED NOT NULL default '0',
-	`hide_no_data` tinyint(1) default 0,
 	PRIMARY KEY(`id_rc`)
 ) ENGINE = InnoDB DEFAULT CHARSET=utf8;
+
+-- ----------------------------------------------------------------------
+-- Table `tnews`
+-- ----------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `tnews` (
+	`id_news` INTEGER UNSIGNED NOT NULL  AUTO_INCREMENT,
+	`author` varchar(255)  NOT NULL DEFAULT '',
+	`subject` varchar(255)  NOT NULL DEFAULT '',
+	`text` TEXT NOT NULL,
+	`timestamp` DATETIME  NOT NULL DEFAULT 0,
+	`id_group` int(10) NOT NULL default 0,
+	`modal` tinyint(1) DEFAULT 0,
+	`expire` tinyint(1) DEFAULT 0,
+	`expire_timestamp` DATETIME  NOT NULL DEFAULT 0,
+	PRIMARY KEY(`id_news`)
+) ENGINE = InnoDB DEFAULT CHARSET=utf8;
+
+
+ALTER TABLE treport_content_template ADD COLUMN `historical_db` tinyint(1) NOT NULL DEFAULT '0';
+ALTER TABLE treport_content_template ADD COLUMN `lapse_calc` tinyint(1) default '0';
+ALTER TABLE treport_content_template ADD COLUMN `lapse` int(11) default '300';
+ALTER TABLE treport_content_template ADD COLUMN `visual_format` tinyint(1) default '0';
+ALTER TABLE treport_content_template ADD COLUMN `hide_no_data` tinyint(1) default '0';
+ALTER TABLE `treport_content_template` ADD COLUMN `total_time` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content_template` ADD COLUMN `time_failed` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content_template` ADD COLUMN `time_in_ok_status` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content_template` ADD COLUMN `time_in_unknown_status` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content_template` ADD COLUMN `time_of_not_initialized_module` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content_template` ADD COLUMN `time_of_downtime` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content_template` ADD COLUMN `total_checks` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content_template` ADD COLUMN `checks_failed` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content_template` ADD COLUMN `checks_in_ok_status` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content_template` ADD COLUMN `unknown_checks` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content_template` ADD COLUMN `agent_max_value` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content_template` ADD COLUMN `agent_min_value` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content_template` ADD COLUMN `current_month` TINYINT(1) DEFAULT '1';
 
 -- -----------------------------------------------------
 -- Table `treport_content_sla_com_temp` (treport_content_sla_combined_template)
@@ -860,6 +905,9 @@ CREATE TABLE IF NOT EXISTS `tmetaconsole_event` (
 -- Criticity: 5 - Minor
 -- Criticity: 6 - Major
 
+ALTER TABLE `tmetaconsole_event` ADD COLUMN `data` double(22,5) default NULL;
+ALTER TABLE `tmetaconsole_event` ADD COLUMN `module_status` int(4) NOT NULL default '0';
+
 -- ---------------------------------------------------------------------
 -- Table `tmetaconsole_event_history`
 -- ---------------------------------------------------------------------
@@ -905,6 +953,8 @@ CREATE TABLE IF NOT EXISTS `tmetaconsole_event_history` (
 -- Criticity: 5 - Minor
 -- Criticity: 6 - Major
 
+ALTER TABLE `tmetaconsole_event_history` ADD COLUMN `data` double(22,5) default NULL;
+ALTER TABLE `tmetaconsole_event_history` ADD COLUMN `module_status` int(4) NOT NULL default '0';
 -- ---------------------------------------------------------------------
 -- Table `textension_translate_string`
 -- ---------------------------------------------------------------------
@@ -957,12 +1007,10 @@ CREATE TABLE IF NOT EXISTS `tmetaconsole_agent` (
 	`agent_version` varchar(100) default '',
 	`ultimo_contacto_remoto` datetime default '1970-01-01 00:00:00',
 	`disabled` tinyint(2) NOT NULL default '0',
-	`remote` tinyint(1) NOT NULL default '0',
 	`id_parent` int(10) unsigned default '0',
 	`custom_id` varchar(255) default '',
 	`server_name` varchar(100) default '',
 	`cascade_protection` tinyint(2) NOT NULL default '0',
-	`cascade_protection_module` int(10) unsigned default '0',
 	`timezone_offset` TINYINT(2) NULL DEFAULT '0' COMMENT 'number of hours of diference with the server timezone' ,
 	`icon_path` VARCHAR(127) NULL DEFAULT NULL COMMENT 'path in the server to the image of the icon representing the agent' ,
 	`update_gis_data` TINYINT(1) NOT NULL DEFAULT '1' COMMENT 'set it to one to update the position data (altitude, longitude, latitude) when getting information from the agent or to 0 to keep the last value and do not update it' ,
@@ -977,8 +1025,6 @@ CREATE TABLE IF NOT EXISTS `tmetaconsole_agent` (
 	`fired_count` bigint(20) NOT NULL default '0',
 	`update_module_count` tinyint(1) NOT NULL default '0',
 	`update_alert_count` tinyint(1) NOT NULL default '0',
-	`transactional_agent` tinyint(1) NOT NULL default '0',
-	`alias` varchar(600) BINARY NOT NULL default '',
 	PRIMARY KEY  (`id_agente`),
 	KEY `nombre` (`nombre`(255)),
 	KEY `direccion` (`direccion`),
@@ -986,6 +1032,11 @@ CREATE TABLE IF NOT EXISTS `tmetaconsole_agent` (
 	KEY `id_grupo` (`id_grupo`),
 	FOREIGN KEY (`id_tmetaconsole_setup`) REFERENCES tmetaconsole_setup(`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
+
+ALTER TABLE tmetaconsole_agent ADD COLUMN `remote` tinyint(1) NOT NULL default '0';
+ALTER TABLE tmetaconsole_agent ADD COLUMN `cascade_protection_module` int(10) default '0';
+ALTER TABLE tmetaconsole_agent ADD COLUMN `transactional_agent` tinyint(1) NOT NULL default '0';
+ALTER TABLE tmetaconsole_agent ADD COLUMN `alias` VARCHAR(600) not null DEFAULT '';
 
 -- ---------------------------------------------------------------------
 -- Table `ttransaction`
@@ -1131,6 +1182,9 @@ ALTER TABLE tagente_estado MODIFY `status_changes` tinyint(4) unsigned default 0
 ALTER TABLE tagente_estado CHANGE `last_known_status` `known_status` tinyint(4) default 0;
 ALTER TABLE tagente_estado ADD COLUMN `last_known_status` tinyint(4) default 0;
 ALTER TABLE tagente_estado ADD COLUMN last_unknown_update bigint(20) NOT NULL default 0;
+ALTER TABLE `tagente_estado` ADD COLUMN `ff_normal` int(4) unsigned default '0';
+ALTER TABLE `tagente_estado` ADD COLUMN `ff_warning` int(4) unsigned default '0';
+ALTER TABLE `tagente_estado` ADD COLUMN `ff_critical` int(4) unsigned default '0';
 
 -- ---------------------------------------------------------------------
 -- Table `talert_actions`
@@ -1161,6 +1215,7 @@ ALTER TABLE talert_actions ADD COLUMN `field15_recovery` TEXT NOT NULL DEFAULT "
 UPDATE `talert_commands` SET `fields_descriptions` = '[\"Integria&#x20;IMS&#x20;API&#x20;path\",\"Integria&#x20;IMS&#x20;API&#x20;pass\",\"Integria&#x20;IMS&#x20;user\",\"Integria&#x20;IMS&#x20;user&#x20;pass\",\"Ticket&#x20;title\",\"Ticket&#x20;group&#x20;ID\",\"Ticket&#x20;priority\",\"Email&#x20;copy\",\"Ticket&#x20;owner\",\"Ticket&#x20;description\"]', `fields_values` = '[\"\",\"\",\"\",\"\",\"\",\"\",\"10,Maintenance;0,Informative;1,Low;2,Medium;3,Serious;4,Very&#x20;Serious\",\"\",\"\",\"\"]' WHERE `id` = 11 AND `name` = 'Integria&#x20;IMS&#x20;Ticket';
 UPDATE `talert_commands` SET `description` = 'This&#x20;alert&#x20;send&#x20;an&#x20;email&#x20;using&#x20;internal&#x20;Pandora&#x20;FMS&#x20;Server&#x20;SMTP&#x20;capabilities&#x20;&#40;defined&#x20;in&#x20;each&#x20;server,&#x20;using:&#x0d;&#x0a;_field1_&#x20;as&#x20;destination&#x20;email&#x20;address,&#x20;and&#x0d;&#x0a;_field2_&#x20;as&#x20;subject&#x20;for&#x20;message.&#x20;&#x0d;&#x0a;_field3_&#x20;as&#x20;text&#x20;of&#x20;message.&#x20;&#x0d;&#x0a;_field4_&#x20;as&#x20;content&#x20;type&#x20;&#40;text/plain&#x20;or&#x20;html/text&#41;.', `fields_descriptions` = '[\"Destination&#x20;address\",\"Subject\",\"Text\",\"Content&#x20;Type\",\"\",\"\",\"\",\"\",\"\",\"\"]', `fields_values` = '[\"\",\"\",\"_html_editor_\",\"_content_type_\",\"\",\"\",\"\",\"\",\"\",\"\"]' WHERE id=1;
 ALTER TABLE `talert_commands` ADD COLUMN `id_group` mediumint(8) unsigned NULL default 0;
+ALTER TABLE `talert_commands` ADD COLUMN `fields_hidden` text;
 
 UPDATE `talert_actions` SET `field4` = 'text/html', `field4_recovery` = 'text/html' WHERE id = 1;
 
@@ -1180,13 +1235,14 @@ ALTER TABLE titem MODIFY `source_data` int(10) unsigned;
 INSERT INTO `tconfig` (`token`, `value`) VALUES ('big_operation_step_datos_purge', '100');
 INSERT INTO `tconfig` (`token`, `value`) VALUES ('small_operation_step_datos_purge', '1000');
 INSERT INTO `tconfig` (`token`, `value`) VALUES ('days_autodisable_deletion', '30');
-INSERT INTO `tconfig` (`token`, `value`) VALUES ('MR', 23);
+INSERT INTO `tconfig` (`token`, `value`) VALUES ('MR', 28);
 INSERT INTO `tconfig` (`token`, `value`) VALUES ('custom_docs_logo', 'default_docs.png');
 INSERT INTO `tconfig` (`token`, `value`) VALUES ('custom_support_logo', 'default_support.png');
 INSERT INTO `tconfig` (`token`, `value`) VALUES ('custom_logo_white_bg_preview', 'pandora_logo_head_white_bg.png');
 UPDATE tconfig SET value = 'https://licensing.artica.es/pandoraupdate7/server.php' WHERE token='url_update_manager';
 DELETE FROM `tconfig` WHERE `token` = 'current_package_enterprise';
-INSERT INTO `tconfig` (`token`, `value`) VALUES ('current_package_enterprise', '730');
+INSERT INTO `tconfig` (`token`, `value`) VALUES ('current_package_enterprise', '735');
+INSERT INTO `tconfig` (`token`, `value`) VALUES ('status_monitor_fields', 'policy,agent,data_type,module_name,server_type,interval,status,graph,warn,data,timestamp');
 
 -- ---------------------------------------------------------------------
 -- Table `tconfig_os`
@@ -1232,6 +1288,11 @@ alter table tusuario add autorefresh_white_list text not null default '';
 ALTER TABLE tusuario ADD COLUMN `time_autorefresh` int(5) unsigned NOT NULL default '30';
 ALTER TABLE `tusuario` DROP COLUMN `flash_chart`;
 ALTER TABLE `tusuario` ADD COLUMN `default_custom_view` int(10) unsigned NULL default '0';
+ALTER TABLE `tusuario` ADD COLUMN `ehorus_user_level_user` VARCHAR(60);
+ALTER TABLE `tusuario` ADD COLUMN `ehorus_user_level_pass` VARCHAR(45);
+ALTER TABLE `tusuario` ADD COLUMN `ehorus_user_level_enabled` TINYINT(1);
+
+
 
 -- ---------------------------------------------------------------------
 -- Table `tagente_modulo`
@@ -1240,6 +1301,10 @@ ALTER TABLE tagente_modulo ADD COLUMN `dynamic_next` bigint(20) NOT NULL default
 ALTER TABLE tagente_modulo ADD COLUMN `dynamic_two_tailed` tinyint(1) unsigned default '0';
 ALTER TABLE tagente_modulo ADD COLUMN `parent_module_id` int(10) unsigned NOT NULL default 0;
 ALTER TABLE `tagente_modulo` ADD COLUMN `cps` int NOT NULL default 0;
+ALTER TABLE `tagente_modulo` ADD COLUMN `ff_type` tinyint(1) unsigned default '0';
+ALTER TABLE `tagente_modulo` ADD COLUMN `ff_normal` int(4) unsigned default '0';
+ALTER TABLE `tagente_modulo` ADD COLUMN `ff_warning` int(4) unsigned default '0';
+ALTER TABLE `tagente_modulo` ADD COLUMN `ff_critical` int(4) unsigned default '0';
 
 -- ---------------------------------------------------------------------
 -- Table `tagente_datos`
@@ -1259,6 +1324,7 @@ ALTER TABLE tnetwork_component ADD COLUMN `dynamic_max` int(4) default '0';
 ALTER TABLE tnetwork_component ADD COLUMN `dynamic_min` int(4) default '0';
 ALTER TABLE tnetwork_component ADD COLUMN `dynamic_next` bigint(20) NOT NULL default '0';
 ALTER TABLE tnetwork_component ADD COLUMN `dynamic_two_tailed` tinyint(1) unsigned default '0';
+ALTER TABLE `tnetwork_component` ADD COLUMN `ff_type` tinyint(1) unsigned default '0';
 
 -- ---------------------------------------------------------------------
 -- Table `tagente`
@@ -1305,6 +1371,11 @@ ALTER TABLE tlayout_data ADD COLUMN `clock_animation` varchar(60) NOT NULL defau
 ALTER TABLE tlayout_data ADD COLUMN `time_format` varchar(60) NOT NULL default "time";
 ALTER TABLE tlayout_data ADD COLUMN `timezone` varchar(60) NOT NULL default "Europe/Madrid";
 ALTER TABLE tlayout_data ADD COLUMN `show_last_value` tinyint(1) UNSIGNED NULL default '0';
+ALTER TABLE `tlayout_data` ADD COLUMN `linked_layout_status_type` ENUM ('default', 'weight', 'service') DEFAULT 'default';
+ALTER TABLE `tlayout_data` ADD COLUMN `linked_layout_status_as_service_warning` FLOAT(20, 3) NOT NULL default 0;
+ALTER TABLE `tlayout_data` ADD COLUMN `linked_layout_status_as_service_critical` FLOAT(20, 3) NOT NULL default 0;
+ALTER TABLE `tlayout_data` ADD COLUMN `linked_layout_node_id` INT(10) NOT NULL default 0;
+ALTER TABLE `tlayout_data` ADD COLUMN `cache_expiration` INTEGER UNSIGNED NOT NULL DEFAULT 0;
 
 -- ---------------------------------------------------------------------
 -- Table `tagent_custom_fields`
@@ -1331,6 +1402,7 @@ ALTER TABLE tgraph ADD COLUMN `fullscale` tinyint(1) UNSIGNED NOT NULL default '
 -- Table `tnetflow_filter`
 -- ---------------------------------------------------------------------
 ALTER TABLE tnetflow_filter ADD COLUMN `router_ip` TEXT NOT NULL DEFAULT "";
+UPDATE `tnetflow_filter` SET aggregate="dstip" WHERE aggregate NOT IN ("dstip", "srcip", "dstport", "srcport");
 
 -- ---------------------------------------------------------------------
 -- Table `treport_custom_sql`
@@ -1345,39 +1417,42 @@ UPDATE treport_custom_sql SET `sql` = 'select&#x20;t1.alias&#x20;as&#x20;agent_n
 -- ----------------------------------------------------------------------
 -- Table `treport_content`
 -- ---------------------------------------------------------------------
-	
 ALTER TABLE treport_content ADD COLUMN `historical_db` tinyint(1) NOT NULL DEFAULT '0';
 ALTER TABLE treport_content ADD COLUMN `lapse_calc` tinyint(1) default '0';
 ALTER TABLE treport_content ADD COLUMN `lapse` int(11) default '300';
 ALTER TABLE treport_content ADD COLUMN `visual_format` tinyint(1) default '0';
 ALTER TABLE treport_content ADD COLUMN `hide_no_data` tinyint(1) default '0';
 ALTER TABLE treport_content ADD COLUMN `recursion` tinyint(1) default NULL;
+ALTER TABLE treport_content ADD COLUMN `show_extended_events` tinyint(1) default '0';
+UPDATE `treport_content` SET type="netflow_summary" WHERE type="netflow_pie" OR type="netflow_statistics";
+ALTER TABLE `treport_content` ADD COLUMN `total_time` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content` ADD COLUMN `time_failed` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content` ADD COLUMN `time_in_ok_status` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content` ADD COLUMN `time_in_unknown_status` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content` ADD COLUMN `time_of_not_initialized_module` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content` ADD COLUMN `time_of_downtime` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content` ADD COLUMN `total_checks` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content` ADD COLUMN `checks_failed` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content` ADD COLUMN `checks_in_ok_status` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content` ADD COLUMN `unknown_checks` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content` ADD COLUMN `agent_max_value` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content` ADD COLUMN `agent_min_value` TINYINT(1) DEFAULT '1';
+ALTER TABLE `treport_content` ADD COLUMN `current_month` TINYINT(1) DEFAULT '1';
 
 -- ---------------------------------------------------------------------
 -- Table `tmodule_relationship`
 -- ---------------------------------------------------------------------
 ALTER TABLE tmodule_relationship ADD COLUMN `id_server` varchar(100) NOT NULL DEFAULT '';
 
--- Table `tlocal_component`
--- ---------------------------------------------------------------------
-ALTER TABLE tlocal_component ADD COLUMN `dynamic_next` bigint(20) NOT NULL default '0';
-ALTER TABLE tlocal_component ADD COLUMN `dynamic_two_tailed` tinyint(1) unsigned default '0';
-
 -- ---------------------------------------------------------------------
 -- Table `tpolicy_module`
 -- ---------------------------------------------------------------------
 ALTER TABLE tpolicy_modules ADD COLUMN `ip_target`varchar(100) default '';
-ALTER TABLE tpolicy_modules ADD COLUMN `dynamic_next` bigint(20) NOT NULL default '0';
-ALTER TABLE tpolicy_modules ADD COLUMN `dynamic_two_tailed` tinyint(1) unsigned default '0';
 ALTER TABLE `tpolicy_modules` ADD COLUMN `cps` int NOT NULL DEFAULT 0;
 
 -- ---------------------------------------------------------------------
 -- Table `tmetaconsole_agent`
 -- ---------------------------------------------------------------------
-ALTER TABLE tmetaconsole_agent ADD COLUMN `remote` tinyint(1) NOT NULL default '0';
-ALTER TABLE tmetaconsole_agent ADD COLUMN `cascade_protection_module` int(10) default '0';
-ALTER TABLE tmetaconsole_agent ADD COLUMN `transactional_agent` tinyint(1) NOT NULL default '0';
-ALTER TABLE tmetaconsole_agent ADD COLUMN `alias` VARCHAR(600) not null DEFAULT '';
 ALTER TABLE tmetaconsole_agent ADD COLUMN `alias_as_name` int(2) unsigned default '0';
 ALTER TABLE tmetaconsole_agent ADD COLUMN `safe_mode_module` int(10) unsigned NOT NULL default '0';
 ALTER TABLE `tmetaconsole_agent` ADD COLUMN `cps` int NOT NULL default 0;
@@ -1394,12 +1469,17 @@ ALTER TABLE twidget_dashboard MODIFY options LONGTEXT NOT NULL default "";
 ALTER TABLE trecon_task ADD `alias_as_name` int(2) unsigned default '0';
 ALTER TABLE trecon_task ADD `snmp_enabled` int(2) unsigned default '0';
 ALTER TABLE trecon_task ADD `vlan_enabled` int(2) unsigned default '0';
+ALTER TABLE trecon_task ADD `wmi_enabled` tinyint(1) unsigned DEFAULT '0';
+ALTER TABLE trecon_task ADD `auth_strings` text;
+ALTER TABLE trecon_task ADD `autoconfiguration_enabled` tinyint(1) unsigned default '0';
+ALTER TABLE trecon_task ADD `summary` text;
 
 -- ---------------------------------------------------------------------
 -- Table `twidget` AND Table `twidget_dashboard`
 -- ---------------------------------------------------------------------
 UPDATE twidget_dashboard SET id_widget = (SELECT id FROM twidget WHERE unique_name = 'graph_module_histogram') WHERE id_widget = (SELECT id FROM twidget WHERE unique_name = 'graph_availability');
 DELETE FROM twidget WHERE unique_name = 'graph_availability';
+UPDATE `twidget` SET `unique_name`='example' WHERE `class_name` LIKE 'WelcomeWidget';
 
 -- ---------------------------------------------------------------------
 -- Table `tbackup` (Extension table. Modify only if exists)
@@ -1542,6 +1622,8 @@ ALTER TABLE `tdashboard` ADD COLUMN `cells_slideshow` TINYINT(1) NOT NULL defaul
 -- ---------------------------------------------------------------------
 -- Table `tsnmp_filter`
 -- ---------------------------------------------------------------------
+ALTER TABLE tsnmp_filter ADD unified_filters_id int(10) NOT NULL DEFAULT 0;
+
 SELECT max(unified_filters_id) INTO @max FROM tsnmp_filter;
 UPDATE tsnmp_filter tsf,(SELECT @max:= @max) m SET tsf.unified_filters_id = @max:= @max + 1 where tsf.unified_filters_id=0;
 
@@ -1732,7 +1814,7 @@ CREATE TABLE IF NOT EXISTS `tautoconfig_actions` (
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `tlayout_template` (
 	`id` INTEGER UNSIGNED NOT NULL AUTO_INCREMENT,
-	`name` varchar(50)  NOT NULL,
+	`name` varchar(600) NOT NULL,
 	`id_group` INTEGER UNSIGNED NOT NULL,
 	`background` varchar(200)  NOT NULL,
 	`height` INTEGER UNSIGNED NOT NULL default 0,
@@ -1778,11 +1860,15 @@ CREATE TABLE IF NOT EXISTS `tlayout_template_data` (
 	`clock_animation` varchar(60) NOT NULL default "analogic_1",
 	`time_format` varchar(60) NOT NULL default "time",
 	`timezone` varchar(60) NOT NULL default "Europe/Madrid",
+	`show_last_value` tinyint(1) UNSIGNED NULL default '0',
+	`linked_layout_status_type` ENUM ('default', 'weight', 'service') DEFAULT 'default',
+	`linked_layout_status_as_service_warning` FLOAT(20, 3) NOT NULL default 0,
+	`linked_layout_status_as_service_critical` FLOAT(20, 3) NOT NULL default 0,
+	`linked_layout_node_id` INT(10) NOT NULL default 0,
 	PRIMARY KEY(`id`),
 	FOREIGN KEY (`id_layout_template`) REFERENCES tlayout_template(`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET=utf8;
 
-ALTER TABLE tlayout_template_data ADD COLUMN `show_last_value` tinyint(1) UNSIGNED NULL default '0';
 -- ---------------------------------------------------------------------
 -- Table `tlog_graph_models`
 -- ---------------------------------------------------------------------
@@ -1798,12 +1884,36 @@ CREATE TABLE IF NOT EXISTS `tlog_graph_models` (
 INSERT INTO tlog_graph_models VALUES (1, 'Apache&#x20;log&#x20;model',
 	'^.*?&#92;s+.*&quot;.*?&#92;s&#40;&#92;/.*?&#41;&#92;?.*1.1&quot;&#92;s+&#40;.*?&#41;&#92;s+&#40;.*?&#41;&#92;s+',
 	'pagina,&#x20;html_err_code,&#x20;_tiempo_', 1);
-	
+
+INSERT INTO tlog_graph_models VALUES (2, 'Apache&#x20;accesses&#x20;per&#x20;client&#x20;and&#x20;status',
+'&#40;.*?&#41;&#92;&#x20;-.*1.1&quot;&#92;&#x20;&#40;&#92;d+&#41;&#92;&#x20;&#92;d+',
+'host,status', 1);
+
+INSERT INTO tlog_graph_models VALUES (3, 'Apache&#x20;time&#x20;per&#x20;requester&#x20;and&#x20;html&#x20;code',
+'&#40;.*?&#41;&#92;&#x20;-.*1.1&quot;&#92;&#x20;&#40;&#92;d+&#41;&#92;&#x20;&#40;&#92;d+&#41;',
+'origin,respose,_time_', 1);
+
+INSERT INTO tlog_graph_models VALUES (4, 'Count&#x20;output',
+'.*',
+'Coincidences', 0);
+
+INSERT INTO tlog_graph_models VALUES (5, 'Events&#x20;replicated&#x20;to&#x20;metaconsole',
+'.*&#x20;&#40;.*?&#41;&#x20;.*&#x20;&#40;&#92;d+&#41;&#x20;events&#x20;replicated&#x20;to&#x20;metaconsole',
+'server,_events_', 0);
+
+INSERT INTO tlog_graph_models VALUES (6, 'Pages&#x20;with&#x20;warnings',
+'PHP&#x20;Warning:.*in&#x20;&#40;.*?&#41;&#x20;on',
+'page', 0);
+
+INSERT INTO tlog_graph_models VALUES (7, 'Users&#x20;login',
+'Starting&#x20;Session&#x20;&#92;d+&#92;&#x20;of&#x20;user&#x20;&#40;.*&#41;',
+'user', 0);
 -- -----------------------------------------------------
 -- Add column in table `treport`
 -- -----------------------------------------------------
 
 ALTER TABLE `treport` ADD COLUMN `hidden` tinyint(1) NOT NULL DEFAULT 0;
+ALTER TABLE `treport` ADD COLUMN `orientation` varchar(25) NOT NULL default 'vertical';
 
 ALTER TABLE `trecon_task` ADD COLUMN `snmp_version` varchar(5) NOT NULL default '1';
 ALTER TABLE `trecon_task` ADD COLUMN `snmp_auth_user` varchar(255) NOT NULL default '';
@@ -1824,11 +1934,261 @@ CREATE TABLE IF NOT EXISTS `tagent_custom_fields_filter` (
 	`id_custom_fields_data` varchar(600) default '',
 	`id_status` varchar(600) default '',
 	`module_search` varchar(600) default '',
+	`module_status` varchar(600) default '',
+	`recursion` int(1) unsigned default '0',
+	`group_search` int(10) unsigned default '0',
 	PRIMARY KEY(`id`)
 ) ENGINE = InnoDB DEFAULT CHARSET=utf8;
 
-ALTER TABLE `tagent_custom_fields_filter` ADD COLUMN `module_status` varchar(600) default '';
+-- ---------------------------------------------------------------------
+-- Table `tevento`
+-- ---------------------------------------------------------------------
+ALTER TABLE `tevento` ADD COLUMN `data` double(22,5) default NULL;
 
-ALTER TABLE `tagent_custom_fields_filter` ADD COLUMN `recursion` int(1) unsigned default '0';
+ALTER TABLE `tevento` ADD COLUMN `module_status` int(4) NOT NULL default '0';
 
-ALTER TABLE `tagent_custom_fields_filter` ADD COLUMN `group_search` int(10) unsigned default '0';
+-- ---------------------------------------------------------------------
+-- Table `tevent_extended`
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `tevent_extended` (
+	`id` serial PRIMARY KEY,
+	`id_evento` bigint(20) unsigned NOT NULL,
+	`external_id` bigint(20) unsigned,
+	`utimestamp` bigint(20) NOT NULL default '0',
+	`description` text,
+	FOREIGN KEY `tevent_ext_fk`(`id_evento`) REFERENCES `tevento`(`id_evento`)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- -----------------------------------------------------
+-- Table `tgis_map_layer_groups`
+-- -----------------------------------------------------
+CREATE TABLE `tgis_map_layer_groups` (
+  `layer_id` int(11) NOT NULL,
+  `group_id` mediumint(4) unsigned NOT NULL,
+  `agent_id` int(10) unsigned NOT NULL COMMENT 'Used to link the position to the group',
+  PRIMARY KEY (`layer_id`,`group_id`),
+  KEY `group_id` (`group_id`),
+  KEY `agent_id` (`agent_id`),
+  CONSTRAINT `tgis_map_layer_groups_ibfk_1` FOREIGN KEY (`layer_id`) REFERENCES `tgis_map_layer` (`id_tmap_layer`) ON DELETE CASCADE,
+  CONSTRAINT `tgis_map_layer_groups_ibfk_2` FOREIGN KEY (`group_id`) REFERENCES `tgrupo` (`id_grupo`) ON DELETE CASCADE,
+  CONSTRAINT `tgis_map_layer_groups_ibfk_3` FOREIGN KEY (`agent_id`) REFERENCES `tagente` (`id_agente`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- -----------------------------------------------------
+-- Table `tnetwork_matrix`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `tnetwork_matrix` (
+	`id` int(10) unsigned NOT NULL auto_increment,
+	`source` varchar(60) default '',
+	`destination` varchar(60) default '',
+	`utimestamp` bigint(20) default 0,
+	`bytes` int(18) unsigned default 0,
+	`pkts` int(18) unsigned default 0,
+	PRIMARY KEY (`id`),
+	UNIQUE (`source`, `destination`, `utimestamp`)
+) ENGINE = InnoDB DEFAULT CHARSET=utf8 ;
+
+-- ---------------------------------------------------------------------
+-- Table `user_task`
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `tuser_task` (
+	`id` int(20) unsigned NOT NULL auto_increment,
+	`function_name` varchar(80) NOT NULL default '',
+	`parameters` text NOT NULL default '',
+	`name` varchar(60) NOT NULL default '',
+	PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- ---------------------------------------------------------------------
+-- Table `user_task_scheduled`
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `tuser_task_scheduled` (
+	`id` int(20) unsigned NOT NULL auto_increment,
+	`id_usuario` varchar(60) NOT NULL default '0',
+	`id_user_task` int(20) unsigned NOT NULL default '0',
+	`args` TEXT NOT NULL,
+	`scheduled` enum('no','hourly','daily','weekly','monthly','yearly','custom') default 'no',
+	`last_run` int(20) unsigned default '0',
+	`custom_data` int(10) NULL default '0',
+	`flag_delete` tinyint(1) UNSIGNED NOT NULL default 0,
+	`id_grupo` int(10) unsigned NOT NULL default 0,
+	PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- -----------------------------------------------------
+-- Table `tnotification_source`
+-- -----------------------------------------------------
+CREATE TABLE `tnotification_source` (
+    `id` serial,
+    `description` VARCHAR(255) DEFAULT NULL,
+    `icon` text,
+    `max_postpone_time` int(11) DEFAULT NULL,
+    `enabled` int(1) DEFAULT NULL,
+    `user_editable` int(1) DEFAULT NULL,
+    `also_mail` int(1) DEFAULT NULL,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `tnotification_source`
+--
+INSERT INTO `tnotification_source`(`description`, `icon`, `max_postpone_time`, `enabled`, `user_editable`, `also_mail`) VALUES
+  ("System&#x20;status", "icono_info_mr.png", 86400, 1, 1, 0),
+  ("Message", "icono_info_mr.png", 86400, 1, 1, 0),
+  ("Pending&#x20;task", "icono_info_mr.png", 86400, 1, 1, 0),
+  ("Advertisement", "icono_info_mr.png", 86400, 1, 1, 0),
+  ("Official&#x20;communication", "icono_logo_pandora.png", 86400, 1, 1, 0),
+  ("Sugerence", "icono_info_mr.png", 86400, 1, 1, 0);
+
+-- -----------------------------------------------------
+-- Table `tmensajes`
+-- -----------------------------------------------------
+ALTER TABLE `tmensajes` ADD COLUMN `url` TEXT;
+ALTER TABLE `tmensajes` ADD COLUMN `response_mode` VARCHAR(200) DEFAULT NULL;
+ALTER TABLE `tmensajes` ADD COLUMN `citicity` INT(10) UNSIGNED DEFAULT '0';
+ALTER TABLE `tmensajes` ADD COLUMN `id_source` BIGINT(20) UNSIGNED NOT NULL;
+ALTER TABLE `tmensajes` ADD COLUMN `subtype` VARCHAR(255) DEFAULT '';
+ALTER TABLE `tmensajes` ADD CONSTRAINT `tsource_fk` FOREIGN KEY (`id_source`) REFERENCES `tnotification_source` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+
+-- ----------------------------------------------------------------------
+-- Table `tnotification_user`
+-- ----------------------------------------------------------------------
+CREATE TABLE `tnotification_user` (
+    `id_mensaje` INT(10) UNSIGNED NOT NULL,
+    `id_user` VARCHAR(60) NOT NULL,
+    `utimestamp_read` BIGINT(20),
+    `utimestamp_erased` BIGINT(20),
+    `postpone` INT,
+    PRIMARY KEY (`id_mensaje`,`id_user`),
+    FOREIGN KEY (`id_mensaje`) REFERENCES `tmensajes`(`id_mensaje`)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (`id_user`) REFERENCES `tusuario`(`id_user`)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- ----------------------------------------------------------------------
+-- Table `tnotification_group`
+-- ----------------------------------------------------------------------
+CREATE TABLE `tnotification_group` (
+	`id_mensaje` INT(10) UNSIGNED NOT NULL,
+	`id_group` mediumint(4) UNSIGNED NOT NULL,
+	PRIMARY KEY (`id_mensaje`,`id_group`),
+	FOREIGN KEY (`id_mensaje`) REFERENCES `tmensajes`(`id_mensaje`)
+		ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- ----------------------------------------------------------------------
+-- Table `tnotification_source_user`
+-- ----------------------------------------------------------------------
+CREATE TABLE `tnotification_source_user` (
+    `id_source` BIGINT(20) UNSIGNED NOT NULL,
+    `id_user` VARCHAR(60),
+    `enabled` INT(1) DEFAULT NULL,
+    `also_mail` INT(1) DEFAULT NULL,
+    PRIMARY KEY (`id_source`,`id_user`),
+    FOREIGN KEY (`id_source`) REFERENCES `tnotification_source`(`id`)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (`id_user`) REFERENCES `tusuario`(`id_user`)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- ----------------------------------------------------------------------
+-- Table `tnotification_source_group`
+-- ----------------------------------------------------------------------
+CREATE TABLE `tnotification_source_group` (
+    `id_source` BIGINT(20) UNSIGNED NOT NULL,
+    `id_group` mediumint(4) unsigned NOT NULL,
+    PRIMARY KEY (`id_source`,`id_group`),
+	INDEX (`id_group`),
+    FOREIGN KEY (`id_source`) REFERENCES `tnotification_source`(`id`)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- ----------------------------------------------------------------------
+-- Table `tnotification_source_user`
+-- ----------------------------------------------------------------------
+CREATE TABLE `tnotification_source_group_user` (
+    `id_source` BIGINT(20) UNSIGNED NOT NULL,
+    `id_group` mediumint(4) unsigned NOT NULL,
+    `id_user` VARCHAR(60),
+    `enabled` INT(1) DEFAULT NULL,
+    `also_mail` INT(1) DEFAULT NULL,
+    PRIMARY KEY (`id_source`,`id_user`),
+    FOREIGN KEY (`id_source`) REFERENCES `tnotification_source`(`id`)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (`id_user`) REFERENCES `tusuario`(`id_user`)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (`id_group`) REFERENCES `tnotification_source_group`(`id_group`)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- ----------------------------------------------------------------------
+-- Add alert command 'Generate notification'
+-- ----------------------------------------------------------------------
+INSERT INTO `talert_commands` (`name`, `command`, `description`, `internal`, `fields_descriptions`, `fields_values`) VALUES ('Generate&#x20;Notification','Internal&#x20;type','This&#x20;command&#x20;allows&#x20;you&#x20;to&#x20;send&#x20;an&#x20;internal&#x20;notification&#x20;to&#x20;any&#x20;user&#x20;or&#x20;group.',1,'[\"Destination&#x20;user\",\"Destination&#x20;group\",\"Title\",\"Message\",\"Link\",\"Criticity\",\"\",\"\",\"\",\"\",\"\"]','[\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"]');
+
+-- ----------------------------------------------------------------------
+-- Update message references and pre-configure notifications
+-- ----------------------------------------------------------------------
+INSERT INTO `tnotification_source_user` (`id_source`, `id_user`, `enabled`, `also_mail`) VALUES ((SELECT `id` FROM `tnotification_source` WHERE `description`="System&#x20;status"), "admin", 1, 0);
+INSERT INTO `tnotification_source_group` SELECT `id`,0 FROM `tnotification_source` WHERE `description`="Message";
+INSERT INTO `tnotification_user` (`id_mensaje`, `id_user`) SELECT `id_mensaje`, `id_usuario_destino` FROM `tmensajes` WHERE `id_usuario_destino` != '';
+INSERT INTO `tnotification_source_user` (`id_source`, `id_user`, `enabled`, `also_mail`) VALUES ((SELECT `id` FROM `tnotification_source` WHERE `description`="Official&#x20;communication"), "admin", 1, 0);
+UPDATE `tnotification_source` SET `enabled`=1 WHERE `description` = 'System&#x20;status' OR `description` = 'Official&#x20;communication';
+
+-- ----------------------------------------------------------------------
+-- Add custom internal recon scripts
+-- ----------------------------------------------------------------------
+INSERT INTO `trecon_script` (`name`,`description`,`script`,`macros`) VALUES ('Discovery.Application.VMware', 'Discovery&#x20;Application&#x20;script&#x20;to&#x20;monitor&#x20;VMware&#x20;technologies&#x20;&#40;ESXi,&#x20;VCenter,&#x20;VSphere&#41;', '/usr/share/pandora_server/util/recon_scripts/vmware-plugin.pl', '{"1":{"macro":"_field1_","desc":"Configuration&#x20;file","help":"","value":"","hide":""}}');
+INSERT INTO `trecon_script` (`name`,`description`,`script`,`macros`) VALUES ('Discovery.Cloud', 'Discovery&#x20;Cloud&#x20;script&#x20;to&#x20;monitor&#x20;Cloud&#x20;technologies&#x20;&#40;AWS.EC2,&#x20;AWS.S3,&#x20;AWS.RDS,&#x20RDS,&#x20AWS.EKS&#41;', '/usr/share/pandora_server/util/recon_scripts/pcm_client.pl', '{"1":{"macro":"_field1_","desc":"Configuration&#x20;file","help":"","value":"","hide":""}}');
+-- ----------------------------------------------------------------------
+-- Add column in table `tagent_custom_fields`
+-- ----------------------------------------------------------------------
+ALTER TABLE tagent_custom_fields ADD COLUMN `combo_values` VARCHAR(255) DEFAULT '';
+
+-- ----------------------------------------------------------------------
+-- Add column in table `tnetflow_filter`
+-- ----------------------------------------------------------------------
+ALTER TABLE `tnetflow_filter` DROP COLUMN `output`;
+
+
+-- ----------------------------------------------------------------------
+-- Update table `tuser_task`
+-- ----------------------------------------------------------------------
+UPDATE tuser_task set parameters = 'a:5:{i:0;a:6:{s:11:\"description\";s:28:\"Report pending to be created\";s:5:\"table\";s:7:\"treport\";s:8:\"field_id\";s:9:\"id_report\";s:10:\"field_name\";s:4:\"name\";s:4:\"type\";s:3:\"int\";s:9:\"acl_group\";s:8:\"id_group\";}i:1;a:2:{s:11:\"description\";s:46:\"Send to email addresses (separated by a comma)\";s:4:\"type\";s:4:\"text\";}i:2;a:2:{s:11:\"description\";s:7:\"Subject\";s:8:\"optional\";i:1;}i:3;a:3:{s:11:\"description\";s:7:\"Message\";s:4:\"type\";s:4:\"text\";s:8:\"optional\";i:1;}i:4;a:2:{s:11:\"description\";s:11:\"Report Type\";s:4:\"type\";s:11:\"report_type\";}}' where function_name = "cron_task_generate_report";
+
+-- ----------------------------------------------------------------------
+-- ADD message in table 'tnews'
+-- ----------------------------------------------------------------------
+
+INSERT INTO `tnews` (`id_news`, `author`, `subject`, `text`, `timestamp`) VALUES (NULL,'admin','Welcome&#x20;to&#x20;Pandora&#x20;FMS&#x20;Console', '&amp;lt;p&#x20;style=&quot;text-align:&#x20;center;&#x20;font-size:&#x20;13px;&quot;&amp;gt;Hello,&#x20;congratulations,&#x20;if&#x20;you&apos;ve&#x20;arrived&#x20;here&#x20;you&#x20;already&#x20;have&#x20;an&#x20;operational&#x20;monitoring&#x20;console.&#x20;Remember&#x20;that&#x20;our&#x20;forums&#x20;and&#x20;online&#x20;documentation&#x20;are&#x20;available&#x20;24x7&#x20;to&#x20;get&#x20;you&#x20;out&#x20;of&#x20;any&#x20;trouble.&#x20;You&#x20;can&#x20;replace&#x20;this&#x20;message&#x20;with&#x20;a&#x20;personalized&#x20;one&#x20;at&#x20;Admin&#x20;tools&#x20;-&amp;amp;gt;&#x20;Site&#x20;news.&amp;lt;/p&amp;gt;&#x20;',NOW());
+
+-- ----------------------------------------------------------------------
+-- Alter table `talert_templates`
+-- ----------------------------------------------------------------------
+
+ ALTER TABLE `talert_templates` MODIFY COLUMN `type` ENUM('regex','max_min','max','min','equal','not_equal','warning','critical','onchange','unknown','always','not_normal');
+
+-- ---------------------------------------------------------------------
+-- Table `tvisual_console_items_cache`
+-- ---------------------------------------------------------------------
+CREATE TABLE `tvisual_console_elements_cache` (
+    `id` INTEGER UNSIGNED NOT NULL AUTO_INCREMENT,
+    `vc_id` INTEGER UNSIGNED NOT NULL,
+    `vc_item_id` INTEGER UNSIGNED NOT NULL,
+    `user_id` VARCHAR(60) DEFAULT NULL,
+    `data` TEXT NOT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`expiration` INTEGER UNSIGNED NOT NULL COMMENT 'Seconds to expire',
+    PRIMARY KEY(`id`),
+    FOREIGN KEY(`vc_id`) REFERENCES `tlayout`(`id`)
+        ON DELETE CASCADE,
+    FOREIGN KEY(`vc_item_id`) REFERENCES `tlayout_data`(`id`)
+        ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `tusuario`(`id_user`)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+) engine=InnoDB DEFAULT CHARSET=utf8;
+

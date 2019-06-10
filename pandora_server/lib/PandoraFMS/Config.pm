@@ -26,7 +26,7 @@ use lib '/usr/lib/perl5';
 
 use PandoraFMS::Tools;
 use PandoraFMS::DB;
-use PandoraFMS::Core;
+
 require Exporter;
 
 our @ISA = ("Exporter");
@@ -44,8 +44,8 @@ our @EXPORT = qw(
 	);
 
 # version: Defines actual version of Pandora Server for this module only
-my $pandora_version = "7.0NG.729";
-my $pandora_build = "181205";
+my $pandora_version = "7.0NG.735";
+my $pandora_build = "190610";
 our $VERSION = $pandora_version." ".$pandora_build;
 
 # Setup hash
@@ -175,6 +175,7 @@ sub pandora_get_sharedconfig ($$) {
 
 	$pa_config->{"provisioning_mode"} = pandora_get_tconfig_token ($dbh, 'provisioning_mode', '');
 
+	$pa_config->{"event_storm_protection"} = pandora_get_tconfig_token ($dbh, 'event_storm_protection', 0);
 
 	if ($pa_config->{'include_agents'} eq '') {
 		$pa_config->{'include_agents'} = 0;
@@ -226,7 +227,7 @@ sub pandora_load_config {
 	$pa_config->{"dataserver"} = 1; # default
 	$pa_config->{"networkserver"} = 1; # default
 	$pa_config->{"snmpconsole"} = 1; # default
-	$pa_config->{"reconserver"} = 1; # default
+	$pa_config->{"discoveryserver"} = 0; # default
 	$pa_config->{"wmiserver"} = 1; # default
 	$pa_config->{"pluginserver"} = 1; # default
 	$pa_config->{"predictionserver"} = 1; # default
@@ -254,6 +255,7 @@ sub pandora_load_config {
 	$pa_config->{"plugin_threads"} = 2; # Introduced on 2.0
 	$pa_config->{"plugin_exec"} = '/usr/bin/timeout'; # 3.0
 	$pa_config->{"recon_threads"} = 2; # Introduced on 2.0
+	$pa_config->{"discovery_threads"} = 2; # Introduced on 732
 	$pa_config->{"prediction_threads"} = 1; # Introduced on 2.0
 	$pa_config->{"plugin_timeout"} = 5; # Introduced on 2.0
 	$pa_config->{"wmi_threads"} = 2; # Introduced on 2.0
@@ -490,6 +492,8 @@ sub pandora_load_config {
 	
 	$pa_config->{'snmp_extlog'} = ""; # 7.0 726
 
+	$pa_config->{"fsnmp"} = "/usr/bin/pandorafsnmp"; # 7.0 732
+
 	# Check for UID0
 	if ($pa_config->{"quiet"} != 0){
 		if ($> == 0){
@@ -657,8 +661,8 @@ sub pandora_load_config {
 		elsif ($parametro =~ m/^predictionserver\s+([0-9]*)/i){
 			$pa_config->{'predictionserver'}= clean_blank($1);
 		}
-		elsif ($parametro =~ m/^reconserver\s+([0-9]*)/i) {
-			$pa_config->{'reconserver'}= clean_blank($1);
+		elsif ($parametro =~ m/^discoveryserver\s+([0-9]*)/i) {
+			$pa_config->{'discoveryserver'}= clean_blank($1);
 		}
 		elsif ($parametro =~ m/^reconserver\s+([0-9]*)/i) {
 			$pa_config->{'reconserver'}= clean_blank($1);
@@ -806,6 +810,9 @@ sub pandora_load_config {
 		}
 		elsif ($parametro =~ m/^autocreate_group\s+([0-9*]*)/i) {
 			$pa_config->{'autocreate_group'}= clean_blank($1); 
+		}
+		elsif ($parametro =~ m/^discovery_threads\s+([0-9]*)/i) {
+			$pa_config->{'discovery_threads'}= clean_blank($1);
 		}
 		elsif ($parametro =~ m/^recon_threads\s+([0-9]*)/i) {
 			$pa_config->{'recon_threads'}= clean_blank($1); 
@@ -1123,6 +1130,21 @@ sub pandora_load_config {
 		elsif ($parametro =~ m/^snmp_extlog\s(.*)/i) { 
 			$pa_config->{'snmp_extlog'} = clean_blank($1); 
 		}
+		elsif ($parametro =~ m/^fsnmp\s(.*)/i) {
+			$pa_config->{'fsnmp'}= clean_blank($1); 
+		}
+
+		# Pandora HA extra
+		elsif ($parametro =~ m/^ha_file\s(.*)/i) {
+			$pa_config->{'ha_file'} = clean_blank($1);
+		}
+		elsif ($parametro =~ m/^ha_pid_file\s(.*)/i) {
+			$pa_config->{'ha_pid_file'} = clean_blank($1);
+		}
+		elsif ($parametro =~ m/^pandora_service_cmd\s(.*)/i) {
+			$pa_config->{'pandora_service_cmd'} = clean_blank($1);
+		}
+		
 	} # end of loop for parameter #
 
 	# Set to RDBMS' standard port
@@ -1190,7 +1212,7 @@ sub pandora_get_tconfig_token ($$$) {
 	my ($dbh, $token, $default_value) = @_;
 	
 	my $token_value = get_db_value ($dbh, "SELECT value FROM tconfig WHERE token = ?", $token);
-	if (defined ($token_value)) {
+	if (defined ($token_value) && $token_value ne '') {
 		return safe_output ($token_value);
 	}
 	
