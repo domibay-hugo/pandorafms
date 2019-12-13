@@ -153,6 +153,7 @@ $checks_in_ok_status = true;
 $unknown_checks = true;
 $agent_max_value = true;
 $agent_min_value = true;
+$uncompressed_module = true;
 
 switch ($action) {
     case 'new':
@@ -162,12 +163,15 @@ switch ($action) {
         $description = null;
         $sql = null;
         $show_in_same_row = 0;
-        $show_in_landscape = 0;
         $hide_notinit_agents = 0;
         $priority_mode = REPORT_PRIORITY_MODE_OK;
+        $failover_mode = 0;
+        $failover_type = REPORT_FAILOVER_TYPE_NORMAL;
         $server_name = '';
         $server_id = 0;
         $dyn_height = 230;
+        $landscape = false;
+        $pagebreak = false;
     break;
 
     case 'save':
@@ -205,7 +209,6 @@ switch ($action) {
                 $description = null;
                 $sql = null;
                 $show_in_same_row = 0;
-                $show_in_landscape = 0;
                 $hide_notinit_agents = 0;
                 $server_name = '';
                 $server_id = 0;
@@ -221,7 +224,7 @@ switch ($action) {
             $server_name = $item['server_name'];
 
             // Metaconsole db connection.
-            if ($meta && $server_name != '') {
+            if ($meta && !empty($server_name)) {
                 $connection = metaconsole_get_connection($server_name);
                 if (metaconsole_load_external_db($connection) != NOERR) {
                     continue;
@@ -230,12 +233,20 @@ switch ($action) {
 
             $style = json_decode(io_safe_output($item['style']), true);
 
+            $name_from_template = $style['name_label'];
+
             $show_in_same_row = $style['show_in_same_row'];
-            $show_in_landscape = $style['show_in_landscape'];
             $hide_notinit_agents = $style['hide_notinit_agents'];
             $dyn_height = $style['dyn_height'];
             $type = $item['type'];
-            $name = $item['name'];
+            $name = $style['name_label'];
+
+            if ($name === null || $name === '') {
+                $name = $item['name'];
+            }
+
+            $landscape = $item['landscape'];
+            $pagebreak = $item['pagebreak'];
 
             switch ($type) {
                 case 'event_report_log':
@@ -314,6 +325,8 @@ switch ($action) {
                     $sla_sorted_by = $item['top_n'];
                     $period = $item['period'];
                     $current_month = $item['current_month'];
+                    $failover_mode = $item['failover_mode'];
+                    $failover_type = $item['failover_type'];
                 break;
 
                 case 'module_histogram_graph':
@@ -423,6 +436,7 @@ switch ($action) {
                     );
                     $idAgentModule = $item['id_agent_module'];
                     $period = $item['period'];
+                    $uncompressed_module = $item['uncompressed_module'];
                 break;
 
                 case 'historical_data':
@@ -474,50 +488,6 @@ switch ($action) {
                     $period = $item['period'];
                 break;
 
-                case 'TTRT':
-                    $description = $item['description'];
-                    $idAgentModule = $item['id_agent_module'];
-                    $idAgent = db_get_value_filter(
-                        'id_agente',
-                        'tagente_modulo',
-                        ['id_agente_modulo' => $idAgentModule]
-                    );
-                    $period = $item['period'];
-                break;
-
-                case 'TTO':
-                    $description = $item['description'];
-                    $idAgentModule = $item['id_agent_module'];
-                    $idAgent = db_get_value_filter(
-                        'id_agente',
-                        'tagente_modulo',
-                        ['id_agente_modulo' => $idAgentModule]
-                    );
-                    $period = $item['period'];
-                break;
-
-                case 'MTBF':
-                    $description = $item['description'];
-                    $idAgentModule = $item['id_agent_module'];
-                    $idAgent = db_get_value_filter(
-                        'id_agente',
-                        'tagente_modulo',
-                        ['id_agente_modulo' => $idAgentModule]
-                    );
-                    $period = $item['period'];
-                break;
-
-                case 'MTTR':
-                    $description = $item['description'];
-                    $idAgentModule = $item['id_agent_module'];
-                    $idAgent = db_get_value_filter(
-                        'id_agente',
-                        'tagente_modulo',
-                        ['id_agente_modulo' => $idAgentModule]
-                    );
-                    $period = $item['period'];
-                break;
-
                 case 'alert_report_module':
                     $description = $item['description'];
                     $idAgentModule = $item['id_agent_module'];
@@ -547,8 +517,45 @@ switch ($action) {
                 break;
 
                 case 'event_report_agent':
-                case 'event_report_group':
+                    $description = $item['description'];
+                    $period = $item['period'];
+                    $group = $item['id_group'];
                     $recursion = $item['recursion'];
+                    $idAgent = $item['id_agent'];
+                    $idAgentModule = $item['id_agent_module'];
+
+
+                    $show_summary_group    = $style['show_summary_group'];
+                    $filter_event_severity = json_decode($style['filter_event_severity'], true);
+                    $filter_event_status   = json_decode($style['filter_event_status'], true);
+                    $filter_event_type     = json_decode($style['filter_event_type'], true);
+
+                    $event_graph_by_user_validator = $style['event_graph_by_user_validator'];
+                    $event_graph_by_criticity = $style['event_graph_by_criticity'];
+                    $event_graph_validated_vs_unvalidated = $style['event_graph_validated_vs_unvalidated'];
+                    $include_extended_events = $item['show_extended_events'];
+
+                    $filter_search = $style['event_filter_search'];
+                break;
+
+                case 'event_report_group':
+                    $description = $item['description'];
+                    $period = $item['period'];
+                    $group = $item['id_group'];
+                    $recursion = $item['recursion'];
+
+                    $event_graph_by_agent = $style['event_graph_by_agent'];
+                    $event_graph_by_user_validator = $style['event_graph_by_user_validator'];
+                    $event_graph_by_criticity = $style['event_graph_by_criticity'];
+                    $event_graph_validated_vs_unvalidated = $style['event_graph_validated_vs_unvalidated'];
+
+                    $filter_search = $style['event_filter_search'];
+
+                    $filter_event_severity = json_decode($style['filter_event_severity'], true);
+                    $filter_event_status   = json_decode($style['filter_event_status'], true);
+                    $filter_event_type     = json_decode($style['filter_event_type'], true);
+
+
                     $include_extended_events = $item['show_extended_events'];
                 break;
 
@@ -745,10 +752,6 @@ switch ($action) {
                 case 'avg_value':
                 case 'projection_graph':
                 case 'prediction_date':
-                case 'TTRT':
-                case 'TTO':
-                case 'MTBF':
-                case 'MTTR':
                 case 'simple_baseline_graph':
                 case 'event_report_log':
                 case 'increment':
@@ -768,7 +771,6 @@ switch ($action) {
         }
     break;
 }
-
 
 $urlForm = $config['homeurl'].'index.php?sec=reporting&sec2=godmode/reporting/reporting_builder&tab=item_editor&action='.$actionParameter.'&id_report='.$idReport;
 
@@ -812,7 +814,10 @@ $class = 'databox filters';
                 }
                 ?>
                 <?php
-                $text = __('This type of report brings a lot of data loading, it is recommended to use it for scheduled reports and not for real-time view.');
+                if (!isset($text)) {
+                    $text = __('This type of report brings a lot of data loading, it is recommended to use it for scheduled reports and not for real-time view.');
+                }
+
                     echo '<a id="log_help_tip" style="visibility: hidden;" href="javascript:" class="tip" >'.html_print_image('images/tip.png', true, ['title' => $text]).'</a>';
                 ?>
             </td>
@@ -824,7 +829,33 @@ $class = 'databox filters';
             </td>
             <td style="">
                 <?php
-                html_print_input_text('name', $name, '', 80, 100);
+                if ($name_from_template != '') {
+                    html_print_input_text(
+                        'name',
+                        $name_from_template,
+                        '',
+                        80,
+                        100,
+                        false,
+                        false,
+                        false,
+                        '',
+                        'fullwidth'
+                    );
+                } else {
+                    html_print_input_text(
+                        'name',
+                        $name,
+                        '',
+                        80,
+                        100,
+                        false,
+                        false,
+                        false,
+                        '',
+                        'fullwidth'
+                    );
+                }
                 ?>
             </td>
         </tr>
@@ -882,7 +913,18 @@ $class = 'databox filters';
             </td>
             <td style="">
                 <?php
-                echo html_print_input_text('label', $label, '', 50, 255, true);
+                echo html_print_input_text(
+                    'label',
+                    $label,
+                    '',
+                    50,
+                    255,
+                    true,
+                    false,
+                    false,
+                    '',
+                    'fullwidth'
+                );
                 ?>
             </td>
         </tr>
@@ -1251,7 +1293,7 @@ $class = 'databox filters';
 
                     if (metaconsole_load_external_db($connection) == NOERR) {
                         $agent_name = db_get_value_filter(
-                            'nombre',
+                            'alias',
                             'tagente',
                             ['id_agente' => $idAgent]
                         );
@@ -1499,10 +1541,8 @@ $class = 'databox filters';
                     $all_modules = '';
                 } else {
                     $all_modules = db_get_all_rows_sql(
-                        'SELECT DISTINCT nombre, id_agente_modulo
-                            FROM tagente_modulo
-                            WHERE id_agente
-                                IN ('.implode(',', array_values($id_agents)).')'
+                        'SELECT DISTINCT nombre FROM 
+							tagente_modulo WHERE id_agente IN ('.implode(',', array_values($id_agents)).')'
                     );
                 }
 
@@ -2164,7 +2204,7 @@ $class = 'databox filters';
         <tr id="row_show_address_agent" style="" class="datos">
             <td style="font-weight:bold;">
                 <?php
-                echo __('Show address instead module name.').ui_print_help_tip(
+                echo __('Show address instead module name').ui_print_help_tip(
                     __('Show the main address of agent.'),
                     true
                 );
@@ -2200,6 +2240,7 @@ $class = 'databox filters';
                 ?>
             </td>
         </tr>
+
         <tr id="row_select_fields2" style="" class="datos">
         <td style="font-weight:bold;margin-right:150px;">
             <?php
@@ -2519,25 +2560,6 @@ $class = 'databox filters';
             </td>
         </tr>
 
-        <tr id="row_show_in_landscape" style="" class="datos">
-            <td style="font-weight:bold;">
-            <?php
-            echo __('Show in landscape');
-            ?>
-            </td>
-            <td>
-                <?php
-                html_print_checkbox(
-                    'show_in_landscape',
-                    1,
-                    $show_in_landscape,
-                    false,
-                    false
-                );
-                ?>
-            </td>
-        </tr>
-
         <tr id="row_priority_mode" style="" class="datos">
             <td style="font-weight:bold;">
             <?php
@@ -2565,6 +2587,59 @@ $class = 'databox filters';
                     REPORT_PRIORITY_MODE_UNKNOWN,
                     '',
                     $priority_mode == REPORT_PRIORITY_MODE_UNKNOWN,
+                    ''
+                );
+                ?>
+            </td>
+        </tr>
+
+        <tr id="row_failover_mode" style="" class="datos">
+            <td style="font-weight:bold;">
+            <?php
+            echo __('Failover mode').ui_print_help_tip(
+                __('SLA calculation must be performed taking into account the failover modules assigned to the primary module'),
+                true
+            );
+            ?>
+            </td>
+            <td>
+                <?php
+                html_print_checkbox_switch(
+                    'failover_mode',
+                    1,
+                    $failover_mode
+                );
+                ?>
+            </td>
+        </tr>
+
+        <tr id="row_failover_type" style="" class="datos">
+            <td style="font-weight:bold;">
+            <?php
+            echo __('Failover type');
+            ?>
+            </td>
+            <td>
+                <?php
+                echo __('Failover normal');
+                echo '<span style="margin-left:5px;"></span>';
+                html_print_radio_button(
+                    'failover_type',
+                    REPORT_FAILOVER_TYPE_NORMAL,
+                    '',
+                    $failover_type == REPORT_FAILOVER_TYPE_NORMAL,
+                    ''
+                );
+
+                echo '<span style="margin:30px;"></span>';
+
+                echo __('Failover simple');
+                echo '<span style="margin-left:5px;"></span>';
+                html_print_radio_button(
+                    'failover_type',
+                    REPORT_FAILOVER_TYPE_SIMPLE,
+                    '',
+                    $failover_type == REPORT_FAILOVER_TYPE_SIMPLE,
                     ''
                 );
                 ?>
@@ -2674,6 +2749,41 @@ $class = 'databox filters';
                 ?>
             </td>
         </tr>
+
+        <tr id="row_uncompressed_module" style="" class="datos">
+            <td style="font-weight:bold;">
+            <?php
+            echo __('Uncompress module').ui_print_help_tip(
+                __('Use uncompressed module data.'),
+                true
+            );
+            ?>
+            </td>
+            <td style="">
+            <?php
+            html_print_checkbox('uncompressed_module', 1, $item['uncompressed_module'], false, false, '', false);
+            ?>
+            </td>
+        </tr>
+
+        <tr id="row_landscape" style="" class="datos">
+            <td style="font-weight:bold;">
+            <?php
+            echo __('Show item in landscape format (only PDF)');
+            ?>
+            </td>
+            <td><?php html_print_checkbox('landscape', 1, $landscape); ?></td>
+        </tr>
+
+        <tr id="row_pagebreak" style="" class="datos">
+            <td style="font-weight:bold;">
+            <?php
+            echo __('Page break at the end of the item (only PDF)');
+            ?>
+            </td>
+            <td><?php html_print_checkbox('pagebreak', 1, $pagebreak); ?></td>
+        </tr>
+
     </tbody>
 </table>
 
@@ -2734,6 +2844,13 @@ function print_SLA_list($width, $action, $idItem=null)
         'id_rc',
         $idItem
     );
+
+    $failover_mode = db_get_value(
+        'failover_mode',
+        'treport_content',
+        'id_rc',
+        $idItem
+    );
     ?>
     <table class="databox data" id="sla_list" border="0" cellpadding="4" cellspacing="4" width="100%">
         <thead>
@@ -2746,8 +2863,23 @@ function print_SLA_list($width, $action, $idItem=null)
                 <th class="header sla_list_module_col" scope="col">
                 <?php
                 echo __('Module');
-                ?>
+                if ($report_item_type == 'availability_graph'
+                    && $failover_mode
+                ) {
+                    ?>
+                <th class="header sla_list_agent_failover" scope="col">
+                    <?php
+                    echo __('Agent Failover');
+                    ?>
                 </th>
+                <th class="header sla_list_module_failover" scope="col">
+                    <?php
+                    echo __('Module Failover');
+                    ?>
+                </th>
+                    <?php
+                }
+                ?>
                 <th class="header sla_list_service_col" scope="col">
                 <?php
                 echo __('Service');
@@ -2793,6 +2925,7 @@ function print_SLA_list($width, $action, $idItem=null)
                 case 'update':
                 case 'edit':
                     echo '<tbody id="list_sla">';
+
                     $itemsSLA = db_get_all_rows_filter(
                         'treport_content_sla_combined',
                         ['id_report_content' => $idItem]
@@ -2805,7 +2938,7 @@ function print_SLA_list($width, $action, $idItem=null)
                     foreach ($itemsSLA as $item) {
                         $server_name = $item['server_name'];
                         // Metaconsole db connection.
-                        if ($meta && $server_name != '') {
+                        if ($meta && !empty($server_name)) {
                             $connection = metaconsole_get_connection(
                                 $server_name
                             );
@@ -2827,6 +2960,25 @@ function print_SLA_list($width, $action, $idItem=null)
                             ['id_agente_modulo' => $item['id_agent_module']]
                         );
 
+                        if (isset($item['id_agent_module_failover']) === true
+                            && $item['id_agent_module_failover'] !== 0
+                        ) {
+                            $idAgentFailover = db_get_value_filter(
+                                'id_agente',
+                                'tagente_modulo',
+                                ['id_agente_modulo' => $item['id_agent_module_failover']]
+                            );
+                            $nameAgentFailover = agents_get_alias(
+                                $idAgentFailover
+                            );
+
+                            $nameModuleFailover = db_get_value_filter(
+                                'nombre',
+                                'tagente_modulo',
+                                ['id_agente_modulo' => $item['id_agent_module_failover']]
+                            );
+                        }
+
                         $server_name_element = '';
                         if ($meta && $server_name != '') {
                             $server_name_element .= ' ('.$server_name.')';
@@ -2839,6 +2991,17 @@ function print_SLA_list($width, $action, $idItem=null)
                         echo '<td class="sla_list_module_col">';
                         echo printSmallFont($nameModule);
                         echo '</td>';
+
+                        if ($report_item_type == 'availability_graph'
+                            && $failover_mode
+                        ) {
+                            echo '<td class="sla_list_agent_failover">';
+                            echo printSmallFont($nameAgentFailover).$server_name_element;
+                            echo '</td>';
+                            echo '<td class="sla_list_module_failover">';
+                            echo printSmallFont($nameModuleFailover);
+                            echo '</td>';
+                        }
 
                         if (enterprise_installed()
                             && $report_item_type == 'SLA_services'
@@ -2888,6 +3051,15 @@ function print_SLA_list($width, $action, $idItem=null)
                             <td class="sla_list_agent_col agent_name"></td>
                             <td class="sla_list_module_col module_name"></td>
                             <?php
+                            if ($report_item_type == 'availability_graph'
+                                && $failover_mode
+                            ) {
+                                ?>
+                            <td class="sla_list_agent_failover agent_name_failover"></td>
+                            <td class="sla_list_module_failover module_name_failover"></td>
+                                <?php
+                            }
+
                             if (enterprise_installed()
                                 && $report_item_type == 'SLA_services'
                             ) {
@@ -2944,6 +3116,44 @@ function print_SLA_list($width, $action, $idItem=null)
                                 </select>
                             </td>
                             <?php
+                            if ($report_item_type == 'availability_graph'
+                                && $failover_mode
+                            ) {
+                                ?>
+                                <td class="sla_list_agent_failover_col">
+                                    <input id="hidden-id_agent_failover" name="id_agent_failover" value="" type="hidden">
+                                    <input id="hidden-server_name_failover" name="server_name_failover" value="" type="hidden">
+                                    <?php
+                                    $params = [];
+                                    $params['show_helptip'] = true;
+                                    $params['input_name'] = 'agent_failover';
+                                    $params['value'] = '';
+                                    $params['use_hidden_input_idagent'] = true;
+                                    $params['hidden_input_idagent_id'] = 'hidden-id_agent_failover';
+                                    $params['javascript_is_function_select'] = true;
+                                    $params['selectbox_id'] = 'id_agent_module_failover';
+                                    $params['add_none_module'] = false;
+                                    if ($meta) {
+                                        $params['use_input_id_server'] = true;
+                                        $params['input_id_server_id'] = 'hidden-id_server';
+                                        $params['disabled_javascript_on_blur_function'] = true;
+                                    }
+
+                                    ui_print_agent_autocomplete_input($params);
+                                    ?>
+                                </td>
+                                <td class="sla_list_module_failover_col">
+                                    <select id="id_agent_module_failover" name="id_agent_module_failover" disabled="disabled" style="max-width: 180px">
+                                        <option value="0">
+                                            <?php
+                                            echo __('Select an Agent first');
+                                            ?>
+                                        </option>
+                                    </select>
+                                </td>
+                                <?php
+                            }
+
                             if (enterprise_installed()
                                 && $report_item_type == 'SLA_services'
                             ) {
@@ -2964,23 +3174,23 @@ function print_SLA_list($width, $action, $idItem=null)
                                         ],
                                     ]
                                 );
-                                if (!empty($services_tmp)
-                                    && $services_tmp != ENTERPRISE_NOT_HOOK
+                        if (!empty($services_tmp)
+                            && $services_tmp != ENTERPRISE_NOT_HOOK
+                        ) {
+                            foreach ($services_tmp as $service) {
+                                $check_module_sla = modules_check_agentmodule_exists(
+                                    $service['sla_id_module']
+                                );
+                                $check_module_sla_value = modules_check_agentmodule_exists(
+                                    $service['sla_value_id_module']
+                                );
+                                if ($check_module_sla
+                                    && $check_module_sla_value
                                 ) {
-                                    foreach ($services_tmp as $service) {
-                                        $check_module_sla = modules_check_agentmodule_exists(
-                                            $service['sla_id_module']
-                                        );
-                                        $check_module_sla_value = modules_check_agentmodule_exists(
-                                            $service['sla_value_id_module']
-                                        );
-                                        if ($check_module_sla
-                                            && $check_module_sla_value
-                                        ) {
-                                            $services[$service['id']] = $service['name'];
-                                        }
-                                    }
+                                    $services[$service['id']] = $service['name'];
                                 }
+                            }
+                        }
 
                                 echo '<td class="sla_list_service_col">';
                                 echo html_print_select(
@@ -3133,7 +3343,7 @@ function print_General_list($width, $action, $idItem=null, $type='general')
                     foreach ($itemsGeneral as $item) {
                         $server_name = $item['server_name'];
                         // Metaconsole db connection.
-                        if ($meta && $server_name != '') {
+                        if ($meta && !empty($server_name)) {
                             $connection = metaconsole_get_connection(
                                 $server_name
                             );
@@ -3296,6 +3506,30 @@ function print_General_list($width, $action, $idItem=null, $type='general')
 }
 
 
+echo "<div id='message_no_name'  title='".__('Item Editor Information')."' style='display:none;'>";
+echo "<p style='text-align: center;font-weight: bold;'>".__('Please select a name.').'</p>';
+echo '</div>';
+
+echo "<div id='message_no_agent'  title='".__('Item Editor Information')."' style='display:none;'>";
+echo "<p style='text-align: center;font-weight: bold;'>".__('Please select an agent.').'</p>';
+echo '</div>';
+
+echo "<div id='message_no_module'  title='".__('Item Editor Information')."' style='display:none;'>";
+echo "<p style='text-align: center;font-weight: bold;'>".__('Please select a module.').'</p>';
+echo '</div>';
+
+echo "<div id='message_no_sql_query'  title='".__('Item Editor Information')."' style='display:none;'>";
+echo "<p style='text-align: center;font-weight: bold;'>".__('Please insert a SQL query.').'</p>';
+echo '</div>';
+
+echo "<div id='message_no_url'  title='".__('Item Editor Information')."' style='display:none;'>";
+echo "<p style='text-align: center;font-weight: bold;'>".__('Please insert a URL.').'</p>';
+echo '</div>';
+
+echo "<div id='message_no_interval_option'  title='".__('Item Editor Information')."' style='display:none;'>";
+echo "<p style='text-align: center;font-weight: bold;'>".__('Please checked a custom interval option.').'</p>';
+echo '</div>';
+
 ui_require_javascript_file(
     'pandora_inventory',
     ENTERPRISE_DIR.'/include/javascript/'
@@ -3308,6 +3542,9 @@ $(document).ready (function () {
     chooseSQLquery();
 
     $("#id_agents").change(agent_changed_by_multiple_agents);
+
+    // Load selected modules by default
+    $("#id_agents2").trigger('click');
 
     $("#combo_group").change (
         function () {
@@ -3491,6 +3728,13 @@ $(document).ready (function () {
 
     $("#submit-create_item").click(function () {
         var type = $('#type').val();
+        var name = $('#text-name').val();
+
+        if($('#text-name').val() == ''){
+            dialog_message('#message_no_name');
+                return false;
+        }
+
         switch (type){
             case 'alert_report_module':
             case 'alert_report_agent':
@@ -3498,10 +3742,6 @@ $(document).ready (function () {
             case 'event_report_module':
             case 'simple_graph':
             case 'simple_baseline_graph':
-            case 'TTRT':
-            case 'TTO':
-            case 'MTBF':
-            case 'MTTR':
             case 'prediction_date':
             case 'projection_graph':
             case 'avg_value':
@@ -3513,18 +3753,108 @@ $(document).ready (function () {
             case 'historical_data':
             case 'agent_configuration':
             case 'module_histogram_graph':
+            case 'increment':
                 if ($("#hidden-id_agent").val() == 0) {
-                    alert( <?php echo "'".__('Please select Agent')."'"; ?> );
+                    dialog_message('#message_no_agent');
                     return false;
                 }
                 break;
+            case 'agent_module':
+                if ($("select#id_agents2>option:selected").val() == undefined) {
+                    dialog_message('#message_no_agent');
+                      return false;
+                      }
+                      break;
+            case 'inventory':
+            case 'inventory_changes':
+                 if ($("select#id_agents>option:selected").val() == undefined) {
+                    dialog_message('#message_no_agent');
+                    return false;
+                    }
+                    break;
             default:
                 break;
         }
+
+        switch (type){
+            case 'alert_report_module':
+            case 'event_report_module':
+            case 'simple_graph':
+            case 'simple_baseline_graph':
+            case 'prediction_date':
+            case 'projection_graph':
+            case 'monitor_report':
+            case 'module_histogram_graph':
+            case 'avg_value':
+            case 'max_value':
+            case 'min_value':
+            case 'database_serialized':
+            case 'sumatory':
+            case 'historical_data':
+            case 'increment':
+
+                if ($("#id_agent_module").val() == 0) {
+                    dialog_message('#message_no_module');
+                    return false;
+                }
+                break;
+            case 'agent_module':
+                if ($("select#module>option:selected").val() == undefined) {
+                    dialog_message('#message_no_module');
+                    return false;
+                    }
+                    break;
+            case 'inventory':
+            case 'inventory_changes':
+                if ($("select#inventory_modules>option:selected").val() == 0) {
+                    dialog_message('#message_no_module');
+                    return false;
+                }
+                    break;
+            case 'sql':
+                if ($("#textarea_sql").val() == ''
+                && $("select#id_custom>option:selected").val() == 0) {
+                    dialog_message('#message_no_sql_query');
+                    return false;
+                }
+                    break;
+            case 'sql_graph_pie':
+            case 'sql_graph_hbar':
+            case 'sql_graph_vbar':
+                if ($("#textarea_sql").val() == '') {
+                    dialog_message('#message_no_sql_query');
+                    return false;
+                }
+                    break;
+            case 'url':
+                if ($("#text-url").val() == '') {
+                    dialog_message('#message_no_url');
+                     return false;
+                }
+                    break;
+            default:
+                break;
+        }
+
+        if (type == 'avg_value' || type == 'max_value' || type == 'min_value') {
+            if (($('input:radio[name=visual_format]:checked').val() != 1
+            && $('input:radio[name=visual_format]:checked').val() != 2
+            && $('input:radio[name=visual_format]:checked').val() != 3)
+            && $("#checkbox-lapse_calc").is(":checked")) {
+                dialog_message('#message_no_interval_option');
+                     return false;
+            }
+        }
+
     });
 
     $("#submit-edit_item").click(function () {
         var type = $('#type').val();
+
+        if($('#text-name').val() == ''){
+            dialog_message('#message_no_name');
+                return false;
+        }
         switch (type){
             case 'alert_report_module':
             case 'alert_report_agent':
@@ -3532,10 +3862,6 @@ $(document).ready (function () {
             case 'event_report_module':
             case 'simple_graph':
             case 'simple_baseline_graph':
-            case 'TTRT':
-            case 'TTO':
-            case 'MTBF':
-            case 'MTTR':
             case 'prediction_date':
             case 'projection_graph':
             case 'avg_value':
@@ -3547,14 +3873,97 @@ $(document).ready (function () {
             case 'historical_data':
             case 'agent_configuration':
             case 'module_histogram_graph':
+            case 'increment':
                 if ($("#hidden-id_agent").val() == 0) {
-                    alert( <?php echo "'".__('Please select Agent')."'"; ?> );
+                    dialog_message('#message_no_agent');
                     return false;
                 }
                 break;
+            case 'agent_module':
+                if ($("select#id_agents2>option:selected").val() == undefined) {
+                    dialog_message('#message_no_agent');
+                    return false;
+                    }
+                    break;
+            case 'inventory':
+                if ($("select#id_agents>option:selected").val() == undefined) {
+                    dialog_message('#message_no_agent');
+                    return false;
+                    }
+                    break;
             default:
                 break;
         }
+
+        switch (type){
+            case 'alert_report_module':
+            case 'event_report_module':
+            case 'simple_graph':
+            case 'simple_baseline_graph':
+            case 'prediction_date':
+            case 'projection_graph':
+            case 'monitor_report':
+            case 'module_histogram_graph':
+            case 'avg_value':
+            case 'max_value':
+            case 'min_value':
+            case 'database_serialized':
+            case 'sumatory':
+            case 'historical_data':
+            case 'increment':
+
+                if ($("#id_agent_module").val() == 0) {
+                    dialog_message('#message_no_module');
+                    return false;
+                }
+                break;
+            case 'agent_module':
+                if ($("select#module>option:selected").val() == undefined) {
+                    dialog_message('#message_no_module');
+                    return false;
+                }
+                    break;
+            case 'inventory':
+                if ($("select#inventory_modules>option:selected").val() == 0) {
+                    dialog_message('#message_no_module');
+                    return false;
+                }
+                    break;
+            case 'sql':
+                if ($("#textarea_sql").val() == ''
+                && $("select#id_custom>option:selected").val() == 0) {
+                    dialog_message('#message_no_sql_query');
+                    return false;
+                }
+                    break;
+            case 'sql_graph_pie':
+            case 'sql_graph_hbar':
+            case 'sql_graph_vbar':
+                if ($("#textarea_sql").val() == '') {
+                    dialog_message('#message_no_sql_query');
+                     return false;
+                }
+                    break;
+            case 'url':
+                if ($("#text-url").val() == '') {
+                    dialog_message('#message_no_url');
+                     return false;
+                }
+                    break;
+            default:
+                break;
+        }
+
+        if (type == 'avg_value' || type == 'max_value' || type == 'min_value') {
+            if (($('input:radio[name=visual_format]:checked').val() != 1
+            && $('input:radio[name=visual_format]:checked').val() != 2
+            && $('input:radio[name=visual_format]:checked').val() != 3)
+            && $("#checkbox-lapse_calc").is(":checked")) {
+                dialog_message('#message_no_interval_option');
+                     return false;
+            }
+        }
+
     });
 
     $("#checkbox-lapse_calc").change(function () {
@@ -3569,13 +3978,23 @@ $(document).ready (function () {
     });
 
     $("#checkbox-checkbox_show_resume").change(function(){
-        if($(this).is(":checked")){
+        type = $("#type").val();
+        if($(this).is(":checked") && type !== 'general'){
             $("#row_select_fields2").show();
             $("#row_select_fields3").show();
         }
         else{
             $("#row_select_fields2").hide();
             $("#row_select_fields3").hide();
+        }
+    });
+
+    $("#checkbox-failover_mode").change(function(){
+        if($(this).is(":checked")){
+            $("#row_failover_type").show();
+        }
+        else{
+            $("#row_failover_type").hide();
         }
     });
 });
@@ -3869,10 +4288,13 @@ function deleteGeneralRow(id_row) {
 
 function addSLARow() {
     var nameAgent = $("input[name=agent_sla]").val();
+    var nameAgentFailover = $("input[name=agent_failover]").val();
     var idAgent = $("input[name=id_agent_sla]").val();
     var serverId = $("input[name=id_server]").val();
     var idModule = $("#id_agent_module_sla").val();
+    var idModuleFailover = $("#id_agent_module_failover").val();
     var nameModule = $("#id_agent_module_sla :selected").text();
+    var nameModuleFailover = $("#id_agent_module_failover :selected").text();
     var slaMin = $("input[name=sla_min]").val();
     var slaMax = $("input[name=sla_max]").val();
     var slaLimit = $("input[name=sla_limit]").val();
@@ -3933,10 +4355,63 @@ function addSLARow() {
                 });
             }
 
+            if (nameAgentFailover != '') {
+                //Truncate nameAgentFailover
+                var params = [];
+                params.push("truncate_text=1");
+                params.push("text=" + nameAgentFailover);
+                params.push("page=include/ajax/reporting.ajax");
+                jQuery.ajax ({
+                    data: params.join ("&"),
+                    type: 'POST',
+                    url: action=
+                    <?php
+                    echo '"'.ui_get_full_url(
+                        false,
+                        false,
+                        false,
+                        false
+                    ).'"';
+                    ?>
+                    + "/ajax.php",
+                    async: false,
+                    timeout: 10000,
+                    success: function (data) {
+                        nameAgentFailover = data;
+                    }
+                });
+
+                //Truncate nameModuleFailover
+                var params = [];
+                params.push("truncate_text=1");
+                params.push("text=" + nameModuleFailover);
+                params.push("page=include/ajax/reporting.ajax");
+                jQuery.ajax ({
+                    data: params.join ("&"),
+                    type: 'POST',
+                    url: action=
+                    <?php
+                    echo '"'.ui_get_full_url(
+                        false,
+                        false,
+                        false,
+                        false
+                    ).'"';
+                    ?>
+                    + "/ajax.php",
+                    async: false,
+                    timeout: 10000,
+                    success: function (data) {
+                        nameModuleFailover = data;
+                    }
+                });
+            }
+
             var params = [];
             params.push("add_sla=1");
             params.push("id=" + $("input[name=id_item]").val());
             params.push("id_module=" + idModule);
+            params.push("id_module_failover=" + idModuleFailover);
             params.push("sla_min=" + slaMin);
             params.push("sla_max=" + slaMax);
             params.push("sla_limit=" + slaLimit);
@@ -3969,6 +4444,8 @@ function addSLARow() {
                         $("#row", row).attr('id', 'sla_' + data['id']);
                         $(".agent_name", row).html(nameAgent);
                         $(".module_name", row).html(nameModule);
+                        $(".agent_name_failover", row).html(nameAgentFailover);
+                        $(".module_name_failover", row).html(nameModuleFailover);
                         $(".service_name", row).html(serviceName);
                         $(".sla_min", row).html(slaMin);
                         $(".sla_max", row).html(slaMax);
@@ -3979,11 +4456,19 @@ function addSLARow() {
                         );
                         $("#list_sla").append($(row).html());
                         $("input[name=id_agent_sla]").val('');
+                        $("input[name=id_agent_failover]").val('');
                         $("input[name=id_server]").val('');
                         $("input[name=agent_sla]").val('');
+                        $("input[name=agent_failover]").val('');
                         $("#id_agent_module_sla").empty();
                         $("#id_agent_module_sla").attr('disabled', 'true');
                         $("#id_agent_module_sla").append(
+                            $("<option></option>")
+                            .attr ("value", 0)
+                            .html ($("#module_sla_text").html()));
+                        $("#id_agent_module_failover").empty();
+                        $("#id_agent_module_failover").attr('disabled', 'true');
+                        $("#id_agent_module_failover").append(
                             $("<option></option>")
                             .attr ("value", 0)
                             .html ($("#module_sla_text").html()));
@@ -4115,7 +4600,6 @@ function addGeneralRow() {
             success: function (data) {
                 if (data['correct']) {
                     row = $("#general_template").clone();
-
                     $("#row", row).show();
                     $("#row", row).attr('id', 'general_' + data['id']);
                     $(".agent_name", row).html(nameAgent);
@@ -4165,6 +4649,8 @@ function chooseType() {
     $("#row_custom_example").hide();
     $("#row_group").hide();
     $("#row_current_month").hide();
+    $("#row_failover_mode").hide();
+    $("#row_failover_type").hide();
     $("#row_working_time").hide();
     $("#row_only_display_wrong").hide();
     $("#row_combo_module").hide();
@@ -4187,7 +4673,6 @@ function chooseType() {
     $("#row_lapse_calc").hide();
     $("#row_lapse").hide();
     $("#row_visual_format").hide();
-    $("#row_show_in_landscape").hide();
     $('#row_hide_notinit_agents').hide();
     $('#row_priority_mode').hide();
     $("#row_module_group").hide();
@@ -4221,6 +4706,7 @@ function chooseType() {
     $('#row_select_fields').hide();
     $("#row_select_fields2").hide();
     $("#row_select_fields3").hide();
+    $("#row_uncompressed_module").hide();
 
     // SLA list default state.
     $("#sla_list").hide();
@@ -4243,6 +4729,8 @@ function chooseType() {
             $("#row_event_filter").show();
             $("#row_event_graphs").show();
 
+
+
             $("#row_event_graph_by_agent").show();
             $("#row_event_graph_by_user").show();
             $("#row_event_graph_by_criticity").show();
@@ -4250,6 +4738,11 @@ function chooseType() {
             $("#row_extended_events").show();
 
             $("#row_filter_search").show();
+
+            $("#row_event_severity").show();
+            $("#row_event_status").show();
+            $("#row_event_type").show();
+            
             $("#row_historical_db_check").hide();
             break;
 
@@ -4331,6 +4824,11 @@ function chooseType() {
             $("#row_working_time").show();
             $("#row_historical_db_check").hide();
             $("#row_priority_mode").show();
+            $("#row_failover_mode").show();
+            var failover_checked = $("input[name='failover_mode']").prop("checked");
+            if(failover_checked){
+                $("#row_failover_type").show();
+            }
             break;
 
         case 'module_histogram_graph':
@@ -4417,6 +4915,7 @@ function chooseType() {
             $("#row_module").show();
             $("#row_period").show();
             $("#row_historical_db_check").hide();
+            $("#row_uncompressed_module").show();
             break;
 
         case 'historical_data':
@@ -4476,38 +4975,6 @@ function chooseType() {
             $("#row_header").show();
             $("#row_field_separator").show();
             $("#row_line_separator").show();
-            $("#row_period").show();
-            $("#row_historical_db_check").hide();
-            break;
-
-        case 'TTRT':
-            $("#row_description").show();
-            $("#row_agent").show();
-            $("#row_module").show();
-            $("#row_period").show();
-            $("#row_historical_db_check").hide();
-            break;
-
-        case 'TTO':
-            $("#row_description").show();
-            $("#row_agent").show();
-            $("#row_module").show();
-            $("#row_period").show();
-            $("#row_historical_db_check").hide();
-            break;
-
-        case 'MTBF':
-            $("#row_description").show();
-            $("#row_agent").show();
-            $("#row_module").show();
-            $("#row_period").show();
-            $("#row_historical_db_check").hide();
-            break;
-
-        case 'MTTR':
-            $("#row_description").show();
-            $("#row_agent").show();
-            $("#row_module").show();
             $("#row_period").show();
             $("#row_historical_db_check").hide();
             break;
@@ -4864,10 +5331,6 @@ function chooseType() {
         case 'min_value':
         case 'max_value':
         case 'avg_value':
-        case 'TTRT':
-        case 'TTO':
-        case 'MTBF':
-        case 'MTTR':
         case 'simple_baseline_graph':
             $("#row_label").show();
             break;
@@ -4926,5 +5389,21 @@ function source_change_agents() {
         },
         "json"
     );
+}
+
+function dialog_message(message_id) {
+  $(message_id)
+    .css("display", "inline")
+    .dialog({
+      modal: true,
+      show: "blind",
+      hide: "blind",
+      width: "400px",
+      buttons: {
+        Close: function() {
+          $(this).dialog("close");
+        }
+      }
+    });
 }
 </script>

@@ -421,7 +421,7 @@ if (!is_metaconsole()) {
 
 $table->data[0][5] = html_print_select($rows_select, 'modulegroup', $modulegroup, '', __('All'), -1, true, false, true, '', false, 'width: 120px;');
 
-$table->rowspan[0][6] = 2;
+$table->rowspan[0][6] = 3;
 $table->data[0][6] = html_print_submit_button(
     __('Show'),
     'uptbutton',
@@ -705,13 +705,14 @@ if (is_metaconsole()) {
         html_print_table($table_custom_fields, true),
         __('Advanced Options'),
         '',
+        '',
         true,
         true
     );
 
     $filters .= html_print_table($table, true);
     $filters .= '</form>';
-    ui_toggle($filters, __('Show Options'), '', false);
+    ui_toggle($filters, __('Show Options'), '', '', false);
 } else {
     $table->colspan[3][0] = 7;
     $table->cellstyle[3][0] = 'padding-left: 10px;';
@@ -722,8 +723,12 @@ if (is_metaconsole()) {
         ),
         __('Agent custom fields'),
         '',
+        '',
         true,
-        true
+        true,
+        '',
+        'white-box-content',
+        'white_table_graph'
     );
 
     $filters .= html_print_table($table, true);
@@ -1389,6 +1394,34 @@ if (!empty($result)) {
                         true
                     );
                 }
+            } else if ($row['estado'] == 3) {
+                if (is_numeric($row['datos'])) {
+                    $data[6] = ui_print_status_image(
+                        STATUS_MODULE_UNKNOWN,
+                        __('UNKNOWN').': '.remove_right_zeros(number_format($row['datos'], $config['graph_precision'])),
+                        true
+                    );
+                } else {
+                    $data[6] = ui_print_status_image(
+                        STATUS_MODULE_UNKNOWN,
+                        __('UNKNOWN').': '.$row['datos'],
+                        true
+                    );
+                }
+            } else if ($row['estado'] == 4) {
+                if (is_numeric($row['datos'])) {
+                    $data[6] = ui_print_status_image(
+                        STATUS_MODULE_NO_DATA,
+                        __('NO DATA').': '.remove_right_zeros(number_format($row['datos'], $config['graph_precision'])),
+                        true
+                    );
+                } else {
+                    $data[6] = ui_print_status_image(
+                        STATUS_MODULE_NO_DATA,
+                        __('NO DATA').': '.$row['datos'],
+                        true
+                    );
+                }
             } else {
                 $last_status = modules_get_agentmodule_last_status(
                     $row['id_agente_modulo']
@@ -1508,7 +1541,9 @@ if (!empty($result)) {
                 $row['str_warning'],
                 $row['max_critical'],
                 $row['min_critical'],
-                $row['str_critical']
+                $row['str_critical'],
+                $row['warning_inverse'],
+                $row['critical_inverse']
             );
 
             if (is_numeric($row['datos']) && !modules_is_string_type($row['module_type'])) {
@@ -1683,10 +1718,9 @@ if (!empty($result)) {
     }
 }
 
-// End Build List Result
-//
+// End Build List Result.
 echo "<div id='monitor_details_window'></div>";
-// strict user hidden
+// Strict user hidden.
 echo '<div id="strict_hidden" style="display:none;">';
 html_print_input_text('strict_user_hidden', $strict_user);
 echo '</div>';
@@ -1723,8 +1757,8 @@ $('#moduletype').click(function() {
     );
 
     return false;
-  });
-    
+});
+
 $('#ag_group').change (function () {
     strict_user = $('#text-strict_user_hidden').val();
     

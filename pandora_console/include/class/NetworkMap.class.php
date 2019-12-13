@@ -2642,7 +2642,16 @@ class NetworkMap
      */
     public function loadMapData()
     {
+        global $config;
+
         $networkmap = $this->map;
+
+        // ACL.
+        $networkmap_write = check_acl(
+            $config['id_user'],
+            $networkmap['id_group'],
+            'MW'
+        );
 
         $simulate = false;
         if (isset($networkmap['__simulated']) === false) {
@@ -2711,6 +2720,7 @@ class NetworkMap
         $output .= 'var networkmap_center = [ '.$networkmap['center_x'].', '.$networkmap['center_y']."];\n";
         $output .= 'var networkmap_dimensions = [ '.$networkmap['width'].', '.$networkmap['height']."];\n";
         $output .= 'var enterprise_installed = '.((int) enterprise_installed()).";\n";
+        $output .= 'var networkmap_write = '.$networkmap_write.";\n";
         $output .= 'var node_radius = '.$networkmap['filter']['node_radius'].";\n";
         $output .= 'var networkmap_holding_area_dimensions = '.json_encode($networkmap['filter']['holding_area']).";\n";
         $output .= "var networkmap = {'nodes': [], 'links':  []};\n";
@@ -2845,6 +2855,7 @@ class NetworkMap
             html_print_table($table, true),
             __('Node Details'),
             __('Node Details'),
+            '',
             false,
             true
         );
@@ -2897,6 +2908,7 @@ class NetworkMap
             html_print_table($table, true),
             __('Node Details'),
             __('Node Details'),
+            '',
             false,
             true
         );
@@ -2922,6 +2934,7 @@ class NetworkMap
             html_print_table($table, true),
             __('Interface Information (SNMP)'),
             __('Interface Information (SNMP)'),
+            '',
             true,
             true
         );
@@ -2996,6 +3009,7 @@ class NetworkMap
             html_print_table($table, true),
             __('Node options'),
             __('Node options'),
+            '',
             true,
             true
         );
@@ -3056,6 +3070,7 @@ class NetworkMap
             html_print_table($table, true),
             __('Relations'),
             __('Relations'),
+            '',
             true,
             true
         );
@@ -3165,6 +3180,7 @@ class NetworkMap
             $add_agent_node_html,
             __('Add agent node'),
             __('Add agent node'),
+            '',
             false,
             true
         );
@@ -3216,6 +3232,7 @@ class NetworkMap
             $add_agent_node_html,
             __('Add agent node (filter by group)'),
             __('Add agent node'),
+            '',
             true,
             true
         );
@@ -3256,6 +3273,7 @@ class NetworkMap
             $add_agent_node_html,
             __('Add fictional point'),
             __('Add agent node'),
+            '',
             true,
             true
         );

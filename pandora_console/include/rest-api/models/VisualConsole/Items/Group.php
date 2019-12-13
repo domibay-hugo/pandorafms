@@ -291,21 +291,9 @@ final class Group extends Item
             $width = (int) $data['width'];
             $height = (int) $data['height'];
             if ($width === 0 || $height === 0) {
-                // TODO: This will be the default behaviour after we finish the
-                // builder. Don't delete this code.
-                // $sizeImage = getimagesize($config['homedir'].'/'.$imagePath);
-                // $data['width'] = $sizeImage[0];
-                // $data['height'] = $sizeImage[1];
                 $sizeImage = getimagesize($config['homedir'].'/'.$imagePath);
-                $imageHeight = $sizeImage[1];
-
-                if ($width === 0) {
-                    $data['width'] = 70;
-                }
-
-                if ($height === 0) {
-                    $data['height'] = ($imageHeight > 70) ? 70 : $imageHeight;
-                }
+                $data['width'] = $sizeImage[0];
+                $data['height'] = $sizeImage[1];
             }
 
             $data['html'] = '<img src="'.$data['statusImageSrc'].'">';
@@ -355,7 +343,7 @@ final class Group extends Item
                 'color: #FFF;',
                 'font-size: 12px;',
                 'display: inline;',
-                'background-color: #FC4444;',
+                'background-color: #e63c52;',
                 'position: relative;',
                 'height: 80%;',
                 'width: 9.4%;',
@@ -389,7 +377,7 @@ final class Group extends Item
         $html .= '<td>';
 
         // Critical.
-        $html .= '<div style="'.$valueStyle.'background-color: #FC4444;">';
+        $html .= '<div style="'.$valueStyle.'background-color: #e63c52;">';
         $html .= \number_format($agentStats['critical'], 2).'%';
         $html .= '</div>';
         $html .= '<div style="'.$nameStyle.'">'.__('Critical').'</div>';

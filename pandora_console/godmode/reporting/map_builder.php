@@ -61,7 +61,7 @@ $buttons['visual_console_favorite'] = [
     'text'   => '<a href="'.$url_visual_console_favorite.'">'.html_print_image('images/list.png', true, ['title' => __('Visual Favourite Console')]).'</a>',
 ];
 
-if ($is_enterprise && $vconsoles_manage) {
+if ($is_enterprise !== ENTERPRISE_NOT_HOOK && $vconsoles_manage) {
     $buttons['visual_console_template'] = [
         'active' => false,
         'text'   => '<a href="'.$url_visual_console_template.'">'.html_print_image('images/templates.png', true, ['title' => __('Visual Console Template')]).'</a>',
@@ -395,7 +395,7 @@ if ($own_info['is_admin'] || $vconsoles_read) {
 if (!$maps && !is_metaconsole()) {
     $total = count(visual_map_get_user_layouts($config['id_user'], false, false, false));
     if (!$total) {
-        include_once $config['homedir'].'/general/firts_task/map_builder.php';
+        include_once $config['homedir'].'/general/first_task/map_builder.php';
     } else {
         ui_print_info_message(
             [
