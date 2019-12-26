@@ -1051,6 +1051,19 @@ $row++;
     $table_report->data[$row][1] = html_print_input_text('graph_image_height', $config['graph_image_height'], '', 20, 20, true);
     $row++;
 
+    $interval_description = [
+        'large' => 'Long',
+        'tiny'  => 'Short',
+    ];
+    $table_report->data[$row][0] = __('Interval description');
+    $table_report->data[$row][0] .= ui_print_help_tip(
+        __('A long interval description is for example 10 hours, 20 minutes 33 seconds”, a short one is 10h 20m 33s'),
+        true
+    );
+    $table_report->data[$row][1] = html_print_select($interval_description, 'interval_description', $config['interval_description'], '', '', '', true, false, false);
+
+    $row++;
+
     // ----------------------------------------------------------------------
     $dirItems = scandir($config['homedir'].'/images/custom_logo');
     foreach ($dirItems as $entryDir) {
@@ -1196,16 +1209,23 @@ $row++;
     if ($config['prominent_time'] == 'comparation') {
         $timestamp = false;
         $comparation = true;
+        $compact = false;
     } else if ($config['prominent_time'] == 'timestamp') {
         $timestamp = true;
         $comparation = false;
+        $compact = false;
+    } else if ($config['prominent_time'] == 'compact') {
+        $timestamp = false;
+        $comparation = false;
+        $compact = true;
     }
 
-    $table_other->data[$row][0] = __('Timestamp or time comparation');
-    $table_other->data[$row][1] = __('Comparation in rollover').' ';
-    $table_other->data[$row][1] .= html_print_radio_button('prominent_time', 'comparation', '', $comparation, true);
-    $table_other->data[$row][1] .= '<br />'.__('Timestamp in rollover').' ';
-    $table_other->data[$row][1] .= html_print_radio_button('prominent_time', 'timestamp', '', $timestamp, true);
+    $table_other->data[$row][0] = __('Timestamp, time comparison, or compact mode');
+    $table_other->data[$row][1] = '<div class="switch_radio_button">';
+    $table_other->data[$row][1] .= html_print_radio_button('prominent_time', 'comparation', __('Comparation in rollover'), $comparation, true);
+    $table_other->data[$row][1] .= html_print_radio_button('prominent_time', 'timestamp', __('Timestamp in rollover'), $timestamp, true);
+    $table_other->data[$row][1] .= html_print_radio_button('prominent_time', 'compact', __('Compact mode'), $compact, true);
+    $table_other->data[$row][1] .= '</div>';
 
     $row++;
 
